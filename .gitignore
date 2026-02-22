@@ -1,0 +1,43 @@
+#Секреты
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# Виртуальное окружение 
+venv/
+env/
+.venv/
+
+# Папка с кэшем Python 
+__pycache__/
+
+# Скомпилированные и оптимизированные Python-файлы 
+*.pyc
+*.pyo
+
+.python-version
+
+
+#IDE
+.vscode/	# VSCode
+.idea/		# JetBrains (PyCharm, WebStorm, IDEA)
+*.iml		# Файлы конфигурации модулей JetBrains
+*.swp		# Vim
+*.swo		# Vim
+
+
+#ОС
+.DS_Store	# MacOS
+.AppleDouble	# Служебные файлы MacOS
+Thumbs.db	# # Файл с превью картинок в Windows
+Desktop.ini	# Файл настроек папок в Windows
+
+#Временные файлы
+tmp/
+temp/
+
+.pytest_cache/	# Кэш тестов pytest
+.mypy_cache/	# Кэш проверки типов Python
