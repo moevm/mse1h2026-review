@@ -22,6 +22,6 @@ class RepositoryResponse(BaseModel):
 
 class RepoStatsResponse(BaseModel):
     total_prs_reviewed: int
-    aggregated_errors: Dict[str, int]                   # Сумма всех ошибок по типам в этом репо
+    aggregated_errors: Dict[str, int]
     total_likes: int
     total_dislikes: int

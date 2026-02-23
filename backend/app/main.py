@@ -1,11 +1,13 @@
 from fastapi import FastAPI
-from app.core.database import engine, Base
 from app.api.routes import worker_router, admin_router
 
-# Буит алембик
-Base.metadata.create_all(bind=engine)
+app = FastAPI(title="AI Reviewer API (Mock Mode)")
 
-app = FastAPI(title="AI Reviewer Admin API")
 
 app.include_router(worker_router)
 app.include_router(admin_router)
+
+
+@app.get("/")
+def health_check():
+    return {"status": "ok", "mode": "test"}
