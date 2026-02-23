@@ -1,0 +1,55 @@
+services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBIT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBIT_PASS}
+    ports: ["15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dispatcher:
+    container_name: dispatcher
+    build: ./dispatcher
+    environment:
+      - RABBIT_URL=${RABBIT_URL}
+    ports:
+      - "8080:8080"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  analyzer:
+    container_name: analyzer
+    build: ./analyzer
+    environment:
+      - RABBIT_URL=${RABBIT_URL}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - DB_URL=${DB_URL}
+      - OLLAMA_URL=http://ollama:11434/api/generate
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ollama_data:
