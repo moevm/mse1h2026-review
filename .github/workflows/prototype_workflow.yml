@@ -1,0 +1,22 @@
+name: PR Test Backend Call
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  notify-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send POST request to backend
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          curl -X POST "$BACKEND_URL/api/test" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "pr_number": "${{ github.event.pull_request.number }}",
+              "title": "${{ github.event.pull_request.title }}",
+              "author": "${{ github.event.pull_request.user.login }}"
+            }'
