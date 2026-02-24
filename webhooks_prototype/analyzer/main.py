@@ -8,7 +8,6 @@ import yaml
 from typing import Dict, Any, Optional
 from github import Github, Auth
 
-# Читаем переменные окружения
 RABBIT_URL = os.getenv("RABBIT_URL")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434/api/generate")
