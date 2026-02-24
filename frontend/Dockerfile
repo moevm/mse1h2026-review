@@ -1,6 +1,4 @@
-FROM node:20-alpine
-
-RUN adduser -D appuser
+FROM node:20-alpine3.23 AS builder
 
 WORKDIR /app
 
@@ -12,8 +10,15 @@ COPY app/ ./
 
 RUN npm run build
 
-USER appuser
 
-EXPOSE 5173
+FROM nginx:1.28.2-alpine3.23
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+WORKDIR /usr/share/nginx/html
+
+RUN rm -rf ./*
+
+COPY --from=builder app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
