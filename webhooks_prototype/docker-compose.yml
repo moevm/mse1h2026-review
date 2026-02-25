@@ -1,0 +1,68 @@
+services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBIT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBIT_PASS}
+    ports:
+      - "127.0.0.1:15672:15672"
+    networks:
+      - mq_net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dispatcher:
+    container_name: dispatcher
+    build: ./dispatcher
+    environment:
+      - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - mq_net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  analyzer:
+    container_name: analyzer
+    build: ./analyzer
+    environment:
+      - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - OLLAMA_URL=http://ollama:11434/api/generate
+    networks:
+      - mq_net
+      - ai_net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ai_net
+    restart: always
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  mq_net:
+  ai_net:
+
+volumes:
+  ollama_data:
