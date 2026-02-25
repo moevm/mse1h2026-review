@@ -47,6 +47,23 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+      
+  tunnel:
+    container_name: localtunnel
+    image: node:20-alpine
+    command: >
+      sh -c "
+      npm install -g localtunnel &&
+      lt --port 8000
+         --host https://localtunnel.me
+         --subdomain ${TUNNEL_SUBDOMAIN}
+      "
+    env_file:
+      - .env
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 networks:
   frontend_net:
@@ -56,3 +73,4 @@ networks:
 
 volumes:
   postgres_data:
+
