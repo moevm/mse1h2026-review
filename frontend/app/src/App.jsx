@@ -54,14 +54,40 @@ function App() {
                             </select>
                         </div>
                     </section>
+                    <div className="stats-container-placeholder">
+                        Место для будущих карточек (Total Reviews, etc.)
+                    </div>
+                    <section className="charts-grid">
+                        <div className="chart-card-custom">
+                            <h3>Error Type Distribution</h3>
+                            <p className="chart-subtitle">Morphology errors</p>
+                            <div className="chart-content-row">
+                                <div className="chart-circle type-dist">
+                                    <div className="chart-inner-white"></div>
+                                </div>
+                                <div className="chart-legend-right">
+                                    <div className="legend-row"><span className="dot d-blue"></span> Typo / Spelling</div>
+                                    <div className="legend-row"><span className="dot d-mid"></span> Syntax Error</div>
+                                    <div className="legend-row"><span className="dot d-light"></span> Logic Error</div>
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Заглушки */}
-                    <div className="stats-placeholder">
-                        Карточки
-                    </div>
-                    <div className="charts-placeholder">
-                        Круговые диаграммы
-                    </div>
+                        <div className="chart-card-custom">
+                            <h3>Error Theme Analysis</h3>
+                            <p className="chart-subtitle">Context errors</p>
+                            <div className="chart-content-row">
+                                <div className="chart-circle theme-dist">
+                                    <div className="chart-inner-white"></div>
+                                </div>
+                                <div className="chart-legend-right">
+                                    <div className="legend-row"><span className="dot d-red"></span> Memory</div>
+                                    <div className="legend-row"><span className="dot d-orange"></span> Security</div>
+                                    <div className="legend-row"><span className="dot d-green"></span> API Integration</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </main>
         </div>
