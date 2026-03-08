@@ -1,27 +1,23 @@
-from pydantic import BaseModel
-from typing import Dict, Optional, List
+from pydantic import BaseModel, ConfigDict
+from typing import List, Dict, Optional
+from datetime import datetime
 
-
-# для воркера
 class ReviewCreate(BaseModel):
     statistics: Dict[str, int]
+    comment_count: int
+    duration_ms: int
 
+class PRDetailsResponse(BaseModel):
+    pr_number: int
+    latest_review_date: datetime
+    chart_data: Dict[str, int]
+    comment_count: int
+    duration_ms: int
+    is_liked: Optional[bool]
+    
+    model_config = ConfigDict(from_attributes=True)
 
-class ReviewUpdateLike(BaseModel):
-    is_liked: bool
-
-
-# для админ-панели
-class RepositoryResponse(BaseModel):
-    owner: str
-    name: str
-
-    class Config:
-        orm_mode = True
-
-
-class RepoStatsResponse(BaseModel):
-    total_prs_reviewed: int
-    aggregated_errors: Dict[str, int]
-    total_likes: int
-    total_dislikes: int
+class GlobalStatsResponse(BaseModel):
+    total_reviews: int
+    total_comments: int
+    avg_duration_ms: float
