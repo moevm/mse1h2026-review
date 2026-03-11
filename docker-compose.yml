@@ -11,33 +11,42 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      tunnel:
+        condition: service_healthy
+    restart: unless-stopped
 
   backend:
     container_name: backend
     build:
       context: ./backend
       dockerfile: Dockerfile
-    env_file:
-      - .env
     ports:
       - "127.0.0.1:8000:8000"
     networks:
       - backend_net
       - frontend_net
+      - mq_net
     depends_on:
       db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8000/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8000/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
 
   db:
     container_name: postgres
     image: postgres:15-alpine3.23
-    env_file:
-      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     networks:
       - backend_net
     volumes:
@@ -47,10 +56,59 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.17.7
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ai_net
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:4.2.4-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBIT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBIT_PASS}
+    ports:
+      - "127.0.0.1:15672:15672"
+    networks:
+      - mq_net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  analyzer:
+    container_name: analyzer
+    build:
+      context: ./analyzer
+      dockerfile: Dockerfile
+    environment:
+      - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - OLLAMA_URL=http://ollama:11434/api/generate
+    networks:
+      - mq_net
+      - ai_net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
       
   tunnel:
     container_name: localtunnel
-    image: node:20-alpine
+    image: node:20-alpine:3.23
     command: >
       sh -c "
       npm install -g localtunnel &&
@@ -58,8 +116,8 @@ services:
          --host https://localtunnel.me
          --subdomain ${TUNNEL_SUBDOMAIN}
       "
-    env_file:
-      - .env
+    networks:
+      - frontend_net
     depends_on:
       backend:
         condition: service_healthy
@@ -70,7 +128,11 @@ networks:
     driver: bridge
   backend_net:
     driver: bridge
+  ai_net:
+    driver: bridge
+  mq_net:
+    driver: bridge
 
 volumes:
   postgres_data:
-
+  ollama_data:
