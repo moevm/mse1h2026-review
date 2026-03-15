@@ -108,7 +108,7 @@ services:
       
   tunnel:
     container_name: localtunnel
-    image: node:20-alpine:3.23
+    image: node:20-alpine3.23
     command: >
       sh -c "
       npm install -g localtunnel &&
@@ -118,6 +118,7 @@ services:
       "
     networks:
       - frontend_net
+      - backend_net
     depends_on:
       backend:
         condition: service_healthy
