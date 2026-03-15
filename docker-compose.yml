@@ -11,8 +11,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-      tunnel:
-        condition: service_healthy
     restart: unless-stopped
 
   backend:
@@ -20,6 +18,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     ports:
       - "127.0.0.1:8000:8000"
     networks:
@@ -88,23 +88,23 @@ services:
       timeout: 5s
       retries: 5
 
-  analyzer:
-    container_name: analyzer
-    build:
-      context: ./analyzer
-      dockerfile: Dockerfile
-    environment:
-      - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - OLLAMA_URL=http://ollama:11434/api/generate
-    networks:
-      - mq_net
-      - ai_net
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      ollama:
-        condition: service_healthy
+  # analyzer:
+  #   container_name: analyzer
+  #   build:
+  #     context: ./analyzer
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
+  #     - GITHUB_TOKEN=${GITHUB_TOKEN}
+  #     - OLLAMA_URL=http://ollama:11434/api/generate
+  #   networks:
+  #     - mq_net
+  #     - ai_net
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     ollama:
+  #       condition: service_healthy
       
   tunnel:
     container_name: localtunnel
