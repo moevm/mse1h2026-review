@@ -119,9 +119,6 @@ services:
     networks:
       - frontend_net
       - backend_net
-    depends_on:
-      backend:
-        condition: service_healthy
     restart: unless-stopped
 
 networks:
