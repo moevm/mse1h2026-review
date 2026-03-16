@@ -54,12 +54,25 @@ function App() {
                             </select>
                         </div>
                     </section>
-                    <div className="stats-container-placeholder">
-                        Место для будущих карточек (Total Reviews, etc.)
-                    </div>
+                    {/* ЦВЕТНЫЕ КАРТОЧКИ ПОКАЗАТЕЛЕЙ */}
+                    <section className="stats-grid-three">
+                        <div className="stat-card-large bg-green">
+                            <label>Total Reviews</label>
+                            <div className="stat-value">1,500</div>
+
+                        </div>
+                        <div className="stat-card-large bg-blue">
+                            <label>Average Time</label>
+                            <div className="stat-value">2,5 h</div>
+                        </div>
+                        <div className="stat-card-large bg-purple">
+                            <label>Comment Voluem</label>
+                            <div className="stat-value">1,500</div>
+                        </div>
+                    </section>
                     <section className="charts-grid">
                         <div className="chart-card-custom">
-                            <h3>Error Type Distribution</h3>
+                            <h3>Errors Types </h3>
                             <p className="chart-subtitle">Morphology errors</p>
                             <div className="chart-content-row">
                                 <div className="chart-circle type-dist">
@@ -74,7 +87,7 @@ function App() {
                         </div>
 
                         <div className="chart-card-custom">
-                            <h3>Error Theme Analysis</h3>
+                            <h3>Errors Themes</h3>
                             <p className="chart-subtitle">Context errors</p>
                             <div className="chart-content-row">
                                 <div className="chart-circle theme-dist">
