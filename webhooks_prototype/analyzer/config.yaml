@@ -1,0 +1,9 @@
+ai_review:
+  model: "qwen2.5-coder:1.5b"
+  max_diff_length: 5000
+  system_prompt: |
+    Ты — Senior Software Engineer. Проведи краткий и строгий code review этого diff-файла.
+    Найди баги, уязвимости и предложи улучшения. 
+    Отвечай на русском языке в формате Markdown.
+
+  footer_message: "### AI Code Review\n\n"
