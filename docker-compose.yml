@@ -90,23 +90,23 @@ services:
       timeout: 5s
       retries: 5
 
-  # analyzer:
-  #   container_name: analyzer
-  #   build:
-  #     context: ./analyzer
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
-  #     - GITHUB_TOKEN=${GITHUB_TOKEN}
-  #     - OLLAMA_URL=http://ollama:11434/api/generate
-  #   networks:
-  #     - mq_net
-  #     - ai_net
-  #   depends_on:
-  #     rabbitmq:
-  #       condition: service_healthy
-  #     ollama:
-  #       condition: service_healthy
+  consumer:
+      container_name: consumer
+      build:
+        context: ./consumer
+        dockerfile: Dockerfile
+      environment:
+        - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
+        - OLLAMA_URL=http://ollama:11434/api/generate
+      networks:
+        - mq_net
+        - ai_net
+      depends_on:
+        rabbitmq:
+          condition: service_healthy
+        ollama:
+          condition: service_healthy
       
   tunnel:
     container_name: localtunnel
@@ -117,6 +117,7 @@ services:
       lt --port 8000
          --host https://localtunnel.me
          --subdomain ${TUNNEL_SUBDOMAIN}
+         --local-host backend
       "
     networks:
       - frontend_net
