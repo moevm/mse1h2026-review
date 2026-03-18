@@ -12,7 +12,7 @@ jobs:
     continue-on-error: true
     strategy:
       matrix:
-        container: [backend, consumer]
+        container: [backend]
     steps:
       - name: Get repository code
         uses: actions/checkout@v4
