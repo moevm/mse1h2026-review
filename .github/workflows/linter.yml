@@ -1,0 +1,52 @@
+name: Linter
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+  push:
+
+jobs:
+  lint_python:
+    name: Python Linter Job
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      matrix:
+        container: [backend, consumer]
+    steps:
+      - name: Get repository code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Lint Ruff
+        run: ruff check ${{ matrix.container }}
+   
+  lint_frontend:
+    name: JS Linter Job
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Get repository code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/app/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: frontend/app
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: frontend/app
+        run: npx eslint . --config ../../.eslintrc.json --ext .js,.jsx
