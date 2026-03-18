@@ -49,4 +49,6 @@ jobs:
 
       - name: Run ESLint
         working-directory: frontend/app
-        run: npx eslint . --config ../../.eslintrc.json --ext .js,.jsx
+        env:
+          ESLINT_USE_FLAT_CONFIG: false
+        run: npx eslint . --ext .js,.jsx
