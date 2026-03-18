@@ -98,7 +98,7 @@ services:
       environment:
         - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
         - GITHUB_TOKEN=${GITHUB_TOKEN}
-        - OLLAMA_URL=http://ollama:11434/api/generate
+        - QUEUE_NAME=webhook_queue
       networks:
         - mq_net
         - ai_net
