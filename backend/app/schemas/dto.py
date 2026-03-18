@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import List, Dict, Optional
+from typing import Dict, Optional
 from datetime import datetime
 
 class ReviewCreate(BaseModel):
