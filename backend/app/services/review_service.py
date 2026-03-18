@@ -44,13 +44,13 @@ class ReviewService:
         repo = self.db.query(Repository).filter_by(owner=owner, name=repo_name).first()
         if not repo:
             repo = Repository(owner=owner, name=repo_name)
-            self.db.add(repo); 
+            self.db.add(repo) 
             self.db.flush()
 
         pr = self.db.query(PullRequest).filter_by(repo_id=repo.id, number=pr_num).first()
         if not pr:
             pr = PullRequest(repo_id=repo.id, number=pr_num)
-            self.db.add(pr); 
+            self.db.add(pr) 
             self.db.flush()
 
         new_review = Review(
@@ -58,7 +58,7 @@ class ReviewService:
             comment_count=data.comment_count, 
             duration_ms=data.duration_ms
         )
-        self.db.add(new_review); 
+        self.db.add(new_review) 
         self.db.flush()
 
         for cat, count in data.statistics.items():
