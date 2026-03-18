@@ -6,19 +6,23 @@ import os
 
 
 Base.metadata.create_all(bind=engine)
-#CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
 app = FastAPI(title="AI Reviewer API")
 
 app.include_router(worker_router, prefix="/worker", tags=["Worker"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 
-'''app.add_middleware(
+raw_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+
+origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
+app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)'''
+)
 
 
 @app.get("/")

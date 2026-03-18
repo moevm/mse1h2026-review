@@ -1,12 +1,44 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models.domain import Repository, PullRequest, Review, ReviewStatItem, SystemLog
+from app.core.config import RABBIT_HOST, RABBIT_PASS, RABBIT_USER
 from datetime import datetime, timedelta
 from typing import Optional
+from fastapi import HTTPException
+import json
+import pika
+
 
 class ReviewService:
     def __init__(self, db: Session):
         self.db = db
+
+
+    def send_to_broker(self, message: dict):
+        try:
+            credentials = pika.PlainCredentials(RABBIT_USER, RABBIT_PASS)
+            parameters = pika.ConnectionParameters(
+                host=RABBIT_HOST, 
+                credentials=credentials,
+                heartbeat=600,
+                blocked_connection_timeout=300
+            )
+            
+            connection = pika.BlockingConnection(parameters)
+            channel = connection.channel()
+            channel.queue_declare(queue='webhook_queue', durable=True)
+            
+            channel.basic_publish(
+                exchange='',
+                routing_key='webhook_queue',
+                body=json.dumps(message),
+                properties=pika.BasicProperties(delivery_mode=2)
+            )
+            connection.close()
+        except Exception as e:
+            print(f"!!! ОШИБКА RABBITMQ: {type(e).__name__}: {e}")
+            raise HTTPException(status_code=500, detail=f"Broker error: {str(e)}") 
+
 
     def save_review(self, owner: str, repo_name: str, pr_num: int, data):
         repo = self.db.query(Repository).filter_by(owner=owner, name=repo_name).first()
@@ -94,3 +126,27 @@ class ReviewService:
             "avg_duration_ms": float(stats[2] or 0),
             "chart_data": {cat: count for cat, count in error_stats}
         }
+    
+
+    def get_all_pull_requests_summary(self):
+        query = self.db.query(
+            Repository.owner,
+            Repository.name.label("repo_name"),
+            PullRequest.number,
+            func.max(Review.created_at).label("last_update"),
+            func.count(Review.id).label("total_reviews")
+        ).join(PullRequest, Repository.id == PullRequest.repo_id) \
+        .outerjoin(Review, PullRequest.id == Review.pr_id) \
+        .group_by(Repository.owner, Repository.name, PullRequest.number) \
+        .all()
+
+        return [
+            {
+                "owner": r.owner,
+                "repo": r.repo_name,
+                "pr_number": r.number,
+                "last_update": r.last_update,
+                "reviews_count": r.total_reviews
+            } for r in query
+        ]
+    
