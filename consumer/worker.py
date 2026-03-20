@@ -32,7 +32,7 @@ def callback(ch, method, properties, body):
         
         repo_owner, repo_name = repo_full_name.split("/")
         
-        print(f"Processing PR #{pr_number} in {repo_full_name}, branch: {branch}", flush=True)
+        print(f"Processing PR #{pr_number} in {repo_full_name}", flush=True)
         
         run_ai_review_for_pr(
             repo_url=repo_url,
