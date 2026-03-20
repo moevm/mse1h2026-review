@@ -10,7 +10,6 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY prompt.md .
 COPY . .
 
 CMD ["python3", "worker.py"]
