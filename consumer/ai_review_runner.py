@@ -5,20 +5,55 @@ import tempfile
 import shutil
 from datetime import datetime
 
+import requests
 
-def run_ai_review_for_pr(repo_url: str, repo_name:str, repo_owner:str, pr_number: str, branch: str):
 
+def ensure_ollama_model(model: str):
+    base_url = "http://ollama:11434"
+
+    try:
+        resp = requests.get(f"{base_url}/api/tags", timeout=30)
+        resp.raise_for_status()
+        models = [m["name"] for m in resp.json().get("models", [])]
+
+        if model not in models:
+            print(f"[{datetime.now()}] Model {model} not found. Pulling...", flush=True)
+
+            pull_resp = requests.post(
+                f"{base_url}/api/pull",
+                json={"name": model},
+                stream=True,
+                timeout=600
+            )
+            pull_resp.raise_for_status()
+
+            for line in pull_resp.iter_lines():
+                if line:
+                    print(line.decode(), flush=True)
+
+            print(f"[{datetime.now()}] Model {model} pulled successfully", flush=True)
+        else:
+            print(f"[{datetime.now()}] Model {model} already exists", flush=True)
+
+    except Exception as e:
+        raise RuntimeError(f"Ollama API error while pulling model: {e}")
+
+
+def run_ai_review_for_pr(repo_url: str, repo_name: str, repo_owner: str, pr_number: str, branch: str):
     temp_dir = tempfile.mkdtemp(prefix=f"ai-review-{repo_name}")
+
     try:
         github_token = os.getenv("GITHUB_TOKEN")
         if not github_token:
             raise ValueError("GITHUB_TOKEN environment variable is not set")
+
         if repo_url.startswith("https://"):
             auth_repo_url = repo_url.replace("https://", f"https://{github_token}@")
         else:
             auth_repo_url = repo_url
-            
+
         print(f"[{datetime.now()}] Cloning repo {repo_url} (branch {branch}) into {temp_dir}", flush=True)
+
         subprocess.run(
             ["git", "clone", "--branch", branch, auth_repo_url, temp_dir],
             check=True,
@@ -26,98 +61,38 @@ def run_ai_review_for_pr(repo_url: str, repo_name:str, repo_owner:str, pr_number
             text=True
         )
 
-        config = {
-            "llm": {
-                "provider": "OLLAMA",
-                "meta": {
-                    "model": "qwen2.5-coder:1.5b",
-                    "max_tokens": 5000,
-                    "temperature": 0.3,
-                    "num_ctx": 5000,
-                    "top_p": 0.9,
-                    "repeat_penalty": 1.1,
-                    "stop": ["USER:", "SYSTEM:"],
-                    "seed": 42
-                },
-                "http_client": {
-                    "api_url": "http://ollama:11434"
-                }
-            },
-            "vcs": {
-                "provider": "GITHUB",
-                "pipeline": {
-                    "owner": repo_owner,
-                    "repo": repo_name,
-                    "pull_number": str(pr_number)
-                },
-                "http_client": {
-                    "verify": True,
-                    "timeout": 120,
-                    "api_url": "https://api.github.com",
-                    "api_token": os.getenv("GITHUB_TOKEN", "")
-                },
-                "pagination": {
-                    "per_page": 100,
-                    "max_pages": 5
-                }
-            },
-            "core": {"concurrency": 7},
-            "prompt": {
-                "context": {},
-                "normalize_prompts": True,
-                "context_placeholder": "<<{value}>>",
-                "include_inline_system_prompts": True,
-                "include_context_system_prompts": True,
-                "include_summary_system_prompts": True,
-                "include_inline_reply_system_prompts": True,
-                "include_summary_reply_system_prompts": True,
-                "inline_prompt_files": ["/app/prompt.md"]
-            },
+        config_src_path = "/app/app/.ai-review.json"
+        config_dst_path = os.path.join(temp_dir, ".ai-review.json")
+        if not os.path.exists(config_src_path):
+            raise FileNotFoundError(f"Config not found at {config_src_path}")
+        shutil.copy(config_src_path, config_dst_path)
 
-            "review": {
-                "mode": "FULL_FILE_DIFF",
-                "dry_run": False,
-                "inline_tag": "#ai-review-inline",
-                "inline_reply_tag": "#ai-review-inline-reply",
-                "summary_tag": "#ai-review-summary",
-                "summary_reply_tag": "#ai-review-summary-reply",
-                "context_lines": 10,
-                "allow_changes": [],
-                "ignore_changes": [],
-                "review_removed_marker": " # removed",
-                "inline_comment_fallback": True
-            },
+        with open(config_dst_path, "r") as f:
+            config = json.load(f)
+            model_name = config["llm"]["meta"]["model"]
+            ensure_ollama_model(model_name)
 
-            "artifacts": {
-                "llm_dir": "./artifacts/llm",
-                "llm_enabled": True
-            }
-        }
+        config["vcs"]["pipeline"]["owner"] = repo_owner
+        config["vcs"]["pipeline"]["repo"] = repo_name
+        config["vcs"]["pipeline"]["pull_number"] = str(pr_number)
+        config["vcs"]["http_client"]["api_token"] = os.getenv("GITHUB_TOKEN", "")
 
-        config_path = os.path.join(temp_dir, ".ai-review.json")
-        with open(config_path, "w") as f:
+        with open(config_dst_path, "w") as f:
             json.dump(config, f, indent=2)
 
         print(f"[{datetime.now()}] Running ai-review for PR #{pr_number}", flush=True)
+
         subprocess.run(["ai-review", "clear-inline"], cwd=temp_dir, check=True)
         subprocess.run(["ai-review", "show-config"], cwd=temp_dir, check=True)
         subprocess.run(["ai-review", "run-inline"], cwd=temp_dir, check=True)
+
         print(f"[{datetime.now()}] Finished AI review for PR #{pr_number}", flush=True)
-        #TODO: запрос в БД для сохранения информации о выполнении ревью (время, результат, артефакты модели)
+
+        # TODO: сохранить результат в БД (время, статус, артефакты)
+
     except Exception as e:
-        print(f"Script failed: {e}")
+        print(f"Script failed: {e}", flush=True)
 
     finally:
         shutil.rmtree(temp_dir)
         print(f"[{datetime.now()}] Cleaned up temporary directory {temp_dir}", flush=True)
-
-# if __name__ == "__main__":
-#     repo_url = "https://github.com/user/ai_review_test"
-#     repo_name = "ai_review_test"
-#     repo_owner = "user"
-#     pr_number = "1"
-#     branch = "my_test_branch"
-#     if not repo_url or not pr_number:
-#         print("Error: REPO_URL and PR_NUMBER environment variables must be set.")
-
-#     run_ai_review_for_pr(repo_url, repo_name, repo_owner, pr_number, branch)
