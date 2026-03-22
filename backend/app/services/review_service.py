@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.models.domain import Repository, PullRequest, Review, ReviewStatItem, SystemLog
+from app.models.domain import Repository, PullRequest, Review, ReviewStatItem
 from app.core.config import RABBIT_HOST, RABBIT_PASS, RABBIT_USER
 from datetime import datetime, timedelta
 from typing import Optional
@@ -37,26 +37,29 @@ class ReviewService:
             connection.close()
         except Exception as e:
             print(f"!!! ОШИБКА RABBITMQ: {type(e).__name__}: {e}")
-            raise HTTPException(status_code=500, detail=f"Broker error: {str(e)}") 
+            raise HTTPException(status_code=500, detail=f"Broker error: {str(e)}") from e
 
 
     def save_review(self, owner: str, repo_name: str, pr_num: int, data):
         repo = self.db.query(Repository).filter_by(owner=owner, name=repo_name).first()
         if not repo:
             repo = Repository(owner=owner, name=repo_name)
-            self.db.add(repo); self.db.flush()
+            self.db.add(repo) 
+            self.db.flush()
 
         pr = self.db.query(PullRequest).filter_by(repo_id=repo.id, number=pr_num).first()
         if not pr:
             pr = PullRequest(repo_id=repo.id, number=pr_num)
-            self.db.add(pr); self.db.flush()
+            self.db.add(pr) 
+            self.db.flush()
 
         new_review = Review(
             pr_id=pr.id, 
             comment_count=data.comment_count, 
             duration_ms=data.duration_ms
         )
-        self.db.add(new_review); self.db.flush()
+        self.db.add(new_review) 
+        self.db.flush()
 
         for cat, count in data.statistics.items():
             self.db.add(ReviewStatItem(review_id=new_review.id, category=cat, issue_count=count))
@@ -69,7 +72,8 @@ class ReviewService:
             .filter(Repository.owner == owner, Repository.name == name, PullRequest.number == pr_num)\
             .order_by(Review.created_at.desc()).first()
         
-        if not review: return None
+        if not review: 
+            return None
         
         return {
             "pr_number": pr_num,

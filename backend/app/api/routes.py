@@ -43,7 +43,3 @@ def get_pr_analytics(owner: str, repo: str, pr_num: int, s: ReviewService = Depe
 @admin_router.get("/pulls")
 def get_all_prs(s: ReviewService = Depends(get_service)):
     return s.get_all_pull_requests_summary()
-
-@admin_router.get("/stats", response_model=GlobalStatsResponse)
-def get_global_metrics(s: ReviewService = Depends(get_service)):
-    return s.get_global_stats()
