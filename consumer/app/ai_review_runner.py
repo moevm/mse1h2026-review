@@ -8,6 +8,8 @@ from datetime import datetime
 import requests
 
 
+config_src_path = "/app/config/.ai-review.json"
+
 def ensure_ollama_model(model: str):
     base_url = "http://ollama:11434"
 
@@ -60,8 +62,6 @@ def run_ai_review_for_pr(repo_url: str, repo_name: str, repo_owner: str, pr_numb
             capture_output=True,
             text=True
         )
-
-        config_src_path = "/app/app/.ai-review.json"
         config_dst_path = os.path.join(temp_dir, ".ai-review.json")
         if not os.path.exists(config_src_path):
             raise FileNotFoundError(f"Config not found at {config_src_path}")

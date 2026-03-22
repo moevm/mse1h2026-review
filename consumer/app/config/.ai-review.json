@@ -43,7 +43,7 @@
         "include_summary_system_prompts": true,
         "include_inline_reply_system_prompts": true,
         "include_summary_reply_system_prompts": true,
-        "inline_prompt_files": ["/app/app/prompt.md"]
+        "inline_prompt_files": ["/app/config/prompt.md"]
     },
 
     "review": {
