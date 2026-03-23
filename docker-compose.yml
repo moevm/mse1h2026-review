@@ -84,6 +84,8 @@ services:
       - "127.0.0.1:15672:15672"
     networks:
       - mq_net
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -137,3 +139,4 @@ networks:
 volumes:
   postgres_data:
   ollama_data:
+  rabbitmq_data:
