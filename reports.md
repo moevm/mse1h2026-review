@@ -54,7 +54,7 @@ Frontend-разработка:
 ### Презентация
  - [Итерация 2](<docs/2 iteration presentation.pdf>)
 ### Скринкасты
-  - [Скринкаст](<docs/iteration1_screencast.mp4>)
+  - [Скринкаст](<docs/iteration2_screencast.mp4>)
 ### Запланированные задачи
  * Сверстать страницу по макету
  * Сделать инструкцию по настройке Github Webhooks
