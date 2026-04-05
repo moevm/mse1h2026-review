@@ -45,11 +45,19 @@ cp .env.example .env
 GITHUB_TOKEN=ghp    - ваш токен доступа (Access Token).
 GITHUB_USER=User    - ваш логин на GitHub.
 ```
+Для запуска dev версии проекта также требуется указать в SMEE_URL ваш адрес smee (подробнее как его получить можно прочитать [здесь](https://github.com/moevm/mse1h2026-review/wiki/%D0%98%D0%BD%D1%81%D1%82%D1%80%D1%83%D0%BA%D1%86%D0%B8%D1%8F-%D0%BF%D0%BE-%D0%BD%D0%B0%D1%81%D1%82%D1%80%D0%BE%D0%B9%D0%BA%D0%B5-Github-Webhooks))
+```bash
+SMEE_URL=https://smee.io/ваш-адрес   - ваш адрес полученный на сайте smee.
+```
 ### 3. Запуск проекта
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
+Для локальной разработки, отладки и проверки работоспособности будет удобнее запустить dev версию с автоматическим запуском перенаправления вебхуков через smee 
 
+```bash
+docker compose -f 'docker-compose-dev.yml' up -d --build
+```
 ### 4.  Проверка статуса
 ```bash
 docker compose ps
