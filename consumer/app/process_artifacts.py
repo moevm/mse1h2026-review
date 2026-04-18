@@ -4,7 +4,6 @@ import re
 from jsonschema import validate, ValidationError
 from collections import Counter
 
-
 from pprint import pprint
 
 REVIEW_SCHEMA = {
@@ -129,6 +128,3 @@ def process_folder(folder_path):
 
     pprint(ans)
     return ans
-
-
-#pprint(process_folder("/home/alebarda/study/mse1h2026-review/some_stas/ai-review-ai_review_testeu1qlw7b/artifacts/llm/"))

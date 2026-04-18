@@ -129,7 +129,7 @@ def run_ai_review_for_pr(repo_url: str, repo_name: str, repo_owner: str, pr_numb
 
         artifacts_path = os.path.join(temp_dir, "artifacts", "llm")
         stats = process_folder(artifacts_path)
-        print(f"[{datetime.now()}] Processed artifacts", flush=True)
+        print(f"[{datetime.now()}] Processed artifacts. Sending review to backend", flush=True)
         send_review_to_backend(
             owner=repo_owner,
             repo=repo_name,
@@ -137,7 +137,7 @@ def run_ai_review_for_pr(repo_url: str, repo_name: str, repo_owner: str, pr_numb
             stats=stats,
             duration_ms=duration_ms
         )
-
+        
     except Exception as e:
         print(f"Script failed: {e}", flush=True)
 
