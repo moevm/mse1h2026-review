@@ -1,5 +1,6 @@
 from typing import Optional
 
+import structlog
 from app.core.database import get_db
 from app.schemas.dto import GlobalStatsResponse, PRDetailsResponse, ReviewCreate
 from app.services.review_service import ReviewService
