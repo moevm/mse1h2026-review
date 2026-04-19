@@ -29,9 +29,9 @@ def ensure_ollama_model(model: str):
 
             for line in pull_resp.iter_lines():
                 if line:
-                    # Оставляем детальный вывод в stdout, если нужно,
-                    # или можно логировать только прогресс
-                    pass
+                    chunk = json.loads(line.decode())
+                    status = chunk.get("status")
+                    log.info("pull_progress", status=status)
 
             log.info("model_pulled_successfully")
         else:
@@ -86,6 +86,8 @@ def run_ai_review_for_pr(repo_url: str, repo_name: str, repo_owner: str, pr_numb
         subprocess.run(["ai-review", "run-inline"], cwd=temp_dir, check=True)
 
         log.info("ai_review_finished")
+
+        # TODO: сохранить результат в БД (время, статус, артефакты)
 
     except Exception as e:
         log.error("ai_review_failed", error=str(e))
