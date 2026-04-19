@@ -3,10 +3,8 @@ import os
 import shutil
 import subprocess
 import tempfile
-from datetime import datetime
 
 import requests
-import structlog
 
 logger = structlog.get_logger()
 config_src_path = "/app/config/.ai-review.json"
