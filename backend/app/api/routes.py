@@ -32,7 +32,7 @@ def get_global_metrics(
 def create_review(owner: str, repo: str, pr_num: int, data: ReviewCreate, s: ReviewService = Depends(get_service)):
     return s.save_review(owner, repo, pr_num, data)
 
-@worker_router.post("/repos/{owner}/{repo}/pulls/{pr_num}/reviews")
+@worker_router.post("/repos/{owner}/{repo}/pulls/{pr_num}/feedback")
 def update_feedback(owner: str, repo: str, pr_num: int, liked: bool, s: ReviewService = Depends(get_service)):
     res = s.update_review_feedback(owner, repo, pr_num, liked)
     if not res:
