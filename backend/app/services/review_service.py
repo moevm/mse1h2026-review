@@ -8,6 +8,8 @@ from fastapi import HTTPException
 import json
 import pika
 
+DEBUG =True
+
 
 class ReviewService:
     def __init__(self, db: Session):
@@ -154,3 +156,21 @@ class ReviewService:
             } for r in query
         ]
     
+    def update_review_feedback(self, owner: str, repo_name: str, pr_num: int, liked: bool):
+        review = (
+            self.db.query(Review)
+            .join(PullRequest).join(Repository)
+            .filter(Repository.owner == owner, Repository.name == repo_name, PullRequest.number == pr_num)
+            .order_by(Review.created_at.desc()).first()
+        )
+        if not review:
+            return None
+        
+        if DEBUG:
+            print("Review was getting from bd")
+
+        review.is_liked = liked
+        self.db.commit()
+        return review    
+
+            
