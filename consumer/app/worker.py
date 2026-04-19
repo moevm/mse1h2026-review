@@ -20,7 +20,6 @@ def callback(ch, method, properties, body):
         print(f"Received message: {message}", flush=True)
         
         comment_body = message.get("comment", {}).get("body", "")
-
         if comment_body.startswith("/ai-feedback"):
             parts = comment_body.split()
             if len(parts) < 2:
@@ -31,8 +30,6 @@ def callback(ch, method, properties, body):
             requests.post(backend_url)
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
-
-
         if comment_body.strip() != "/ai-review":
             print(f"Ignoring comment: '{comment_body}'", flush=True)
             ch.basic_ack(delivery_tag=method.delivery_tag)
