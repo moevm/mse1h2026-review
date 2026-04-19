@@ -26,7 +26,7 @@ def callback(ch, method, properties, body):
                 return
             
             liked = parts[1].lower() == "like"
-            backend_url = f"http:/backend:8000/worker/repos/{repo_owner}/{repo_name}/pulls/{pr_number}/feedback?liked={liked}"
+            backend_url = f"http://backend:8000/worker/repos/{repo_owner}/{repo_name}/pulls/{pr_number}/feedback?liked={liked}"
             requests.post(backend_url)
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
