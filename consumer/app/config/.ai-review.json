@@ -12,6 +12,7 @@
             "seed": 42
         },
         "http_client": {
+            "timeout": 300.0,
             "api_url": "http://ollama:11434"
         }
     },
@@ -33,12 +34,13 @@
             "max_pages": 5
         }
     },
-    "core": {"concurrency": 7},
+    "core": {"concurrency": 2},
     "prompt": {
         "context": {},
         "normalize_prompts": true,
         "context_placeholder": "<<{value}>>",
-        "include_inline_system_prompts": true,
+        "system_inline_prompt_files": ["/app/config/system_prompt.md"],
+        "include_inline_system_prompts": false,
         "include_context_system_prompts": true,
         "include_summary_system_prompts": true,
         "include_inline_reply_system_prompts": true,
@@ -59,7 +61,10 @@
         "review_removed_marker": " # removed",
         "inline_comment_fallback": true
     },
-
+    "logger": {
+        "level": "INFO",
+        "format": "{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[logger_name]} | {message}"
+  },
     "artifacts": {
         "llm_dir": "./artifacts/llm",
         "llm_enabled": true

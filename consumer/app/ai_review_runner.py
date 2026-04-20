@@ -7,9 +7,12 @@ import tempfile
 import requests
 import structlog
 
-logger = structlog.get_logger()
+from process_artifacts import process_folder
+
+BACKEND_URL = "http://backend:8000"
 config_src_path = "/app/config/.ai-review.json"
 
+logger = structlog.get_logger()
 
 def ensure_ollama_model(model: str):
     base_url = "http://ollama:11434"
@@ -26,19 +29,50 @@ def ensure_ollama_model(model: str):
             pull_resp = requests.post(f"{base_url}/api/pull", json={"name": model}, stream=True, timeout=600)
             pull_resp.raise_for_status()
 
+            last_status = None
+            last_print = time.time()
+
             for line in pull_resp.iter_lines():
-                if line:
-                    chunk = json.loads(line.decode())
+                if not line:
+                    continue
+                try:
+                    msg = line.decode()
+                    last_status = msg
+                    chunk = json.loads(msg)
                     status = chunk.get("status")
                     log.info("pull_progress", status=status)
+                except Exception:
+                    continue
+
+                if time.time() - last_print >= 5:
+                    if last_status:
+                        log.info("pull_progress_status", status=last_status)
+                    last_print = time.time()
 
             log.info("model_pulled_successfully")
-        else:
-            log.debug("model_exists")
 
     except Exception as e:
         log.error("ollama_api_error", error=str(e))
         raise RuntimeError(f"Ollama API error while pulling model: {e}")
+
+
+def send_review_to_backend(owner, repo, pr_number, stats, duration_ms):
+    payload = {
+        "comment_count": stats["comment_count"],
+        "duration_ms": duration_ms,
+        "statistics": {
+            **stats["error_type_stats"],
+            **stats["error_topic_stats"]
+        }
+    }
+
+    url = f"{BACKEND_URL}/worker/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
+
+    resp = requests.post(url, json=payload, timeout=30)
+    resp.raise_for_status()
+
+    log.info("review_sent_to_backend", owner=owner, repo=repo, pr_number=pr_number)
+    return resp.json()
 
 
 def run_ai_review_for_pr(repo_url: str, repo_name: str, repo_owner: str, pr_number: str, branch: str):
@@ -80,14 +114,28 @@ def run_ai_review_for_pr(repo_url: str, repo_name: str, repo_owner: str, pr_numb
 
         log.info("running_ai_review_tool")
 
+        start_time = time.time()
         subprocess.run(["ai-review", "clear-inline"], cwd=temp_dir, check=True)
         subprocess.run(["ai-review", "show-config"], cwd=temp_dir, check=True)
         subprocess.run(["ai-review", "run-inline"], cwd=temp_dir, check=True)
+        
+        end_time = time.time()
+        duration_ms = int((end_time - start_time) * 1000)
+        
+        log.info("ai_review_finished", pr_number=pr_number)
+        log.info("ai_review_duration_ms", pr_number=pr_number, duration_ms=duration_ms)
 
-        log.info("ai_review_finished")
-
-        # TODO: сохранить результат в БД (время, статус, артефакты)
-
+        artifacts_path = os.path.join(temp_dir, "artifacts", "llm")
+        stats = process_folder(artifacts_path)
+        log.info("artifacts_processed", pr_number=pr_number)
+        send_review_to_backend(
+            owner=repo_owner,
+            repo=repo_name,
+            pr_number=pr_number,
+            stats=stats,
+            duration_ms=duration_ms
+        )
+        
     except Exception as e:
         log.error("ai_review_failed", error=str(e))
 
