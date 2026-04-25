@@ -1,0 +1,100 @@
+# Полный конфиг c описаниями можно посмотреть тут:
+# https://github.com/Nikita-Filonov/ai-review/blob/150f80168a20b435017e2422bfb30fa24351c1d0/docs/configs/.ai-review.yaml
+# Всё что помечено комментарием можно настраивать
+
+llm:
+  provider: OLLAMA
+
+  meta:
+    model: qwen3-coder-next:cloud
+    max_tokens: 5000    # Максимальное кол-во токенов в ответе
+    temperature: 0.3    # "Креативность" модели (при 0 ответы будут детерминированные)
+    num_ctx: 5000       # Количество токенов в контексте
+    top_p: 0.9          # nucleus sampling: модель выбирает самый вероятный набор токенов, суммарная вероятность которых равна top_p. Чем больше, тем больше "ширина выбора" при генерации
+    repeat_penalty: 1.1 # Штраф за повторение токенов
+    stop:
+      - "USER:"
+      - "SYSTEM:"
+    seed: 42            # Cид
+
+  http_client:
+    timeout: 300.0 # Максимальное время ожидания ответа модели (в секундах). Если за это время ответ не сгенерировался, ревью данного файла не будет выполнено.
+    api_url: http://ollama:11434
+
+vcs:
+  provider: GITHUB
+
+  pipeline:
+    owner: ""
+    repo: ""
+    pull_number: ""
+
+  http_client:
+    verify: true
+    timeout: 120 # Максимальное время ожидания ответа от github
+    api_url: https://api.github.com
+    api_token: ""
+
+  pagination:
+    per_page: 100
+    max_pages: 5
+
+core:
+  concurrency: 2 # Количество одновременных запросов к модели.
+
+prompt:
+  context: {}
+
+  normalize_prompts: true
+  context_placeholder: "<<{value}>>"
+
+  system_inline_prompt_files:
+    - /app/config/system_prompt.md
+
+  include_inline_system_prompts: false
+  include_context_system_prompts: true
+  include_summary_system_prompts: true
+  include_inline_reply_system_prompts: true
+  include_summary_reply_system_prompts: true
+
+  inline_prompt_files:
+    - /app/config/prompt.md
+
+review:
+  # Review mode определяет, какие части файла будут отправляться LLM на ревью
+  # Варианты:
+  #   FULL_FILE_DIFF              - Сравнить добавленные и удалённые строки (по умолчанию)
+  #   FULL_FILE_CURRENT           - Ревью текущую версию файла
+  #   FULL_FILE_PREVIOUS          - Ревью предыдущей версии файла
+  #
+  #   ONLY_ADDED                  - Только добавленные строки
+  #   ONLY_REMOVED                - Только удалённые строки
+  #   ADDED_AND_REMOVED           - И добавленные, и удалённые строки
+  #
+  #   ONLY_ADDED_WITH_CONTEXT     - Добавленные строки + N строк контекста
+  #   ONLY_REMOVED_WITH_CONTEXT   - Удалённые строки + N строк контекста
+  #   ADDED_AND_REMOVED_WITH_CONTEXT - Добавленные и удалённые строки + N строк контекста
+  mode: FULL_FILE_DIFF
+  dry_run: false
+
+  inline_tag: "#ai-review-inline"
+  inline_reply_tag: "#ai-review-inline-reply"
+  summary_tag: "#ai-review-summary"
+  summary_reply_tag: "#ai-review-summary-reply"
+
+  context_lines: 10
+
+  allow_changes: []
+  ignore_changes: []
+
+  review_removed_marker: " # removed"
+
+  inline_comment_fallback: true
+
+logger:
+  level: INFO
+  format: "{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[logger_name]} | {message}"
+
+artifacts:
+  llm_dir: ./artifacts/llm
+  llm_enabled: true
