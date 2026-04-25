@@ -1,9 +1,12 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import worker_router, admin_router
-from app.core.database import engine, Base
 import os
 
+from app.api.routes import admin_router, worker_router
+from app.core.database import Base, engine
+from app.core.logger import setup_logger
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+setup_logger()
 
 Base.metadata.create_all(bind=engine)
 
