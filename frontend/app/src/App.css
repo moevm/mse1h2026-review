@@ -3,6 +3,9 @@
   padding: 0;
   box-sizing: border-box;
 }
+select {
+  appearance: auto;
+}
 
 :root {
   --bg-color: #f4f6f8;
@@ -132,12 +135,29 @@
 }
 
 .filter-group select {
-  border: 1px solid #ccc;
-  background: #eee;
-  padding: 8px 12px;
-  border-radius: 8px;
-  min-width: 180px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  background-color: #ffffff !important;
+  color: #000000 !important;
+
+  border: 1px solid #d2d2d7;
+  padding: 10px 35px 10px 14px;
+  border-radius: 10px;
+  min-width: 200px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.filter-group select option {
+  background-color: white !important;
+  color: black !important;
 }
 
 .divider {
@@ -221,14 +241,12 @@
 .d-orange { background: #fdcb6e; }
 .d-green { background: #55efc4; }
 
-/* Сетка на 3 колонки */
 .stats-grid-three {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 25px;
 }
 
-/* Увеличенная карточка */
 .stat-card-large {
   background: white;
   padding: 35px 30px;

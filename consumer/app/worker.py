@@ -1,85 +1,78 @@
-import os
-import pika
 import json
-import requests
+import os
 import time
+
+import pika
+import requests
+import structlog
 from ai_review_runner import run_ai_review_for_pr
+from logger import setup_logger
+
+setup_logger()
+logger = structlog.get_logger()
+
 
 def get_branch(repo, pr, token):
     url = f"https://api.github.com/repos/{repo}/pulls/{pr}"
     headers = {"Authorization": f"token {token}"} if token else {}
-    
+
     r = requests.get(url, headers=headers)
     if r.status_code == 200:
         return r.json()["head"]["ref"]
     return None
 
+
 def callback(ch, method, properties, body):
+    log = logger.new()
     try:
         message = json.loads(body)
-        print(f"Received message: {message}", flush=True)
-
-        comment_body = message.get("comment", {}).get("body", "").strip()
-
-        is_review = comment_body == "/ai-review"
-        is_feedback = comment_body.startswith("/ai-feedback")
-
-        if not (is_review or is_feedback):
-            print(f"Ignoring comment: '{comment_body}'", flush=True)
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            return
-
-        pr_number = message.get("issue", {}).get("number")
         repo_full_name = message.get("repository", {}).get("full_name")
-        repo_url = message.get("repository", {}).get("html_url")
-        
-        if not (pr_number and repo_full_name):
-            print("Missing core fields, skipping.")
+        pr_number = message.get("issue", {}).get("number")
+
+        log = log.bind(repo=repo_full_name, pr=pr_number)
+        log.info("received_message")
+
+        comment_body = message.get("comment", {}).get("body", "")
+        if comment_body.strip() != "/ai-review":
+            log.info("ignoring_comment", reason="wrong_command")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
+        if not message.get("issue", {}).get("pull_request"):
+            log.info("ignoring_comment", reason="not_a_pr")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
+
+        token = os.getenv("GITHUB_TOKEN")
+        branch = get_branch(repo_full_name, pr_number, token)
+        if not branch:
+            log.error("branch_not_found")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
+
+        repo_url = message.get("repository", {}).get("html_url")
         repo_owner, repo_name = repo_full_name.split("/")
 
-        if is_feedback:
-            parts = comment_body.split()
-            if len(parts) >= 2:
-                liked = parts[1].lower() == "like"
-                backend_url = f"http://backend:8000/worker/repos/{repo_owner}/{repo_name}/pulls/{pr_number}/feedback?liked={str(liked).lower()}"
-                requests.post(backend_url)
-                print(f"Feedback sent: {liked}")
-            
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            return
+        log.info("processing_started", branch=branch)
 
-        if is_review:
-            token = os.getenv("GITHUB_TOKEN")
-            branch = get_branch(repo_full_name, pr_number, token)
-            
-            if not branch:
-                print(f"Branch not found for PR #{pr_number}")
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-                return
+        run_ai_review_for_pr(
+            repo_url=repo_url, repo_name=repo_name, repo_owner=repo_owner, pr_number=pr_number, branch=branch
+        )
 
-            run_ai_review_for_pr(
-                repo_url=repo_url,
-                repo_name=repo_name,
-                repo_owner=repo_owner,
-                pr_number=pr_number,
-                branch=branch
-            )
-
+        log.info("processing_finished")
         ch.basic_ack(delivery_tag=method.delivery_tag)
-
     except Exception as e:
-        print(f"Error: {e}", flush=True)
+        log.error("processing_failed", error=str(e))
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
 
 def main():
     queue_name = os.getenv("QUEUE_NAME", "webhook_queue")
     rabbitmq_url = os.getenv("RABBIT_URL", "amqp://guest:guest@rabbitmq:5672/")
-    
+
     params = pika.URLParameters(rabbitmq_url)
     params.heartbeat = 300
+
     while True:
         try:
             connection = pika.BlockingConnection(params)
@@ -89,17 +82,20 @@ def main():
             channel.basic_qos(prefetch_count=1)
 
             channel.basic_consume(queue=queue_name, on_message_callback=callback)
-            print(f"Consumer started. Waiting for messages on {queue_name}...", flush=True)
+
+            logger.info("consumer_started", queue=queue_name, rabbit_url=rabbitmq_url)
+
             try:
                 channel.start_consuming()
-            except (pika.exceptions.StreamLostError, ConnectionResetError):
-                print("Stream lost, reconnecting...", flush=True)
+            except (pika.exceptions.StreamLostError, ConnectionResetError) as e:
+                logger.warning("stream_lost", error=str(e), action="reconnecting")
                 connection.close()
                 time.sleep(5)
 
         except pika.exceptions.AMQPConnectionError as e:
-            print(f"AMQP connection error: {e}, retrying...", flush=True)
+            logger.error("amqp_connection_error", error=str(e), retry_in=5)
             time.sleep(5)
-            
+
+
 if __name__ == "__main__":
     main()

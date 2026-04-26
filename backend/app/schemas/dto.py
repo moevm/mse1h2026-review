@@ -21,3 +21,4 @@ class GlobalStatsResponse(BaseModel):
     total_reviews: int
     total_comments: int
     avg_duration_ms: float
+    chart_data: Dict[str, int]
