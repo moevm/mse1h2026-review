@@ -16,6 +16,13 @@ def get_service(db: Session = Depends(get_db)):
 
 @worker_router.post("/webhook")
 async def handle_external_webhook(data: dict, s: ReviewService = Depends(get_service)):
+    action = data.get("action")
+    if action not in ["created", "opened"]:  # GitHub использует "created", GitLab "opened"
+        return {
+            "status": "ignored",
+            "message": f"Action '{action}' is not supported. Only 'created' or 'opened' actions trigger reviews",
+        }
+
     comment = data.get("comment", {})
     body = comment.get("body", "").strip()
 

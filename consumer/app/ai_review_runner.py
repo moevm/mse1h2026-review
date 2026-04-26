@@ -3,16 +3,17 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 
 import requests
 import structlog
-
 from process_artifacts import process_folder
 
 BACKEND_URL = "http://backend:8000"
 config_src_path = "/app/config/.ai-review.json"
 
 logger = structlog.get_logger()
+
 
 def ensure_ollama_model(model: str):
     base_url = "http://ollama:11434"
@@ -60,10 +61,7 @@ def send_review_to_backend(owner, repo, pr_number, stats, duration_ms):
     payload = {
         "comment_count": stats["comment_count"],
         "duration_ms": duration_ms,
-        "statistics": {
-            **stats["error_type_stats"],
-            **stats["error_topic_stats"]
-        }
+        "statistics": {**stats["error_type_stats"], **stats["error_topic_stats"]},
     }
 
     url = f"{BACKEND_URL}/worker/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
@@ -71,7 +69,7 @@ def send_review_to_backend(owner, repo, pr_number, stats, duration_ms):
     resp = requests.post(url, json=payload, timeout=30)
     resp.raise_for_status()
 
-    log.info("review_sent_to_backend", owner=owner, repo=repo, pr_number=pr_number)
+    logger.info("review_sent_to_backend", owner=owner, repo=repo, pr_number=pr_number)
     return resp.json()
 
 
@@ -118,24 +116,20 @@ def run_ai_review_for_pr(repo_url: str, repo_name: str, repo_owner: str, pr_numb
         subprocess.run(["ai-review", "clear-inline"], cwd=temp_dir, check=True)
         subprocess.run(["ai-review", "show-config"], cwd=temp_dir, check=True)
         subprocess.run(["ai-review", "run-inline"], cwd=temp_dir, check=True)
-        
+
         end_time = time.time()
         duration_ms = int((end_time - start_time) * 1000)
-        
-        log.info("ai_review_finished", pr_number=pr_number)
-        log.info("ai_review_duration_ms", pr_number=pr_number, duration_ms=duration_ms)
+
+        log.info("ai_review_finished")
+        log.info("ai_review_duration_ms", duration_ms=duration_ms)
 
         artifacts_path = os.path.join(temp_dir, "artifacts", "llm")
         stats = process_folder(artifacts_path)
-        log.info("artifacts_processed", pr_number=pr_number)
+        log.info("artifacts_processed")
         send_review_to_backend(
-            owner=repo_owner,
-            repo=repo_name,
-            pr_number=pr_number,
-            stats=stats,
-            duration_ms=duration_ms
+            owner=repo_owner, repo=repo_name, pr_number=pr_number, stats=stats, duration_ms=duration_ms
         )
-        
+
     except Exception as e:
         log.error("ai_review_failed", error=str(e))
 
