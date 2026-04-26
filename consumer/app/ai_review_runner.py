@@ -1,3 +1,4 @@
+import yaml
 import json
 import os
 import shutil
@@ -10,7 +11,7 @@ import structlog
 from process_artifacts import process_folder
 
 BACKEND_URL = "http://backend:8000"
-config_src_path = "/app/config/.ai-review.json"
+config_src_path = "/app/config/.ai-review.yaml"
 
 logger = structlog.get_logger()
 
@@ -73,7 +74,13 @@ def send_review_to_backend(owner, repo, pr_number, stats, duration_ms):
     return resp.json()
 
 
-def run_ai_review_for_pr(repo_url: str, repo_name: str, repo_owner: str, pr_number: str, branch: str):
+def run_ai_review_for_pr(
+    repo_url: str,
+    repo_name: str,
+    repo_owner: str,
+    pr_number: str,
+    branch: str
+):
     log = logger.bind(repo=f"{repo_owner}/{repo_name}", pr=pr_number, branch=branch)
     temp_dir = tempfile.mkdtemp(prefix=f"ai-review-{repo_name}")
 
@@ -92,23 +99,25 @@ def run_ai_review_for_pr(repo_url: str, repo_name: str, repo_owner: str, pr_numb
         subprocess.run(
             ["git", "clone", "--branch", branch, auth_repo_url, temp_dir], check=True, capture_output=True, text=True
         )
-        config_dst_path = os.path.join(temp_dir, ".ai-review.json")
+
+        config_dst_path = os.path.join(temp_dir, ".ai-review.yaml")
+
         if not os.path.exists(config_src_path):
             raise FileNotFoundError(f"Config not found at {config_src_path}")
         shutil.copy(config_src_path, config_dst_path)
 
-        with open(config_dst_path, "r") as f:
-            config = json.load(f)
-            model_name = config["llm"]["meta"]["model"]
-            ensure_ollama_model(model_name)
+        with open(config_dst_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        model_name = config["llm"]["meta"]["model"]
+        ensure_ollama_model(model_name)
 
         config["vcs"]["pipeline"]["owner"] = repo_owner
         config["vcs"]["pipeline"]["repo"] = repo_name
         config["vcs"]["pipeline"]["pull_number"] = str(pr_number)
-        config["vcs"]["http_client"]["api_token"] = os.getenv("GITHUB_TOKEN", "")
+        config["vcs"]["http_client"]["api_token"] = github_token
 
-        with open(config_dst_path, "w") as f:
-            json.dump(config, f, indent=2)
+        with open(config_dst_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(config, f, sort_keys=False, allow_unicode=True)
 
         log.info("running_ai_review_tool")
 
