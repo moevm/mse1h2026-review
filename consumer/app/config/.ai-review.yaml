@@ -6,7 +6,7 @@ llm:
   provider: OLLAMA
 
   meta:
-    model: qwen3-coder-next:cloud
+    model: qwen2.5-coder:1.5b  # Выбор LLM (список моделей на сайте: https://ollama.com/search)
     max_tokens: 5000    # Максимальное кол-во токенов в ответе
     temperature: 0.3    # "Креативность" модели (при 0 ответы будут детерминированные)
     num_ctx: 5000       # Количество токенов в контексте
