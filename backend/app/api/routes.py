@@ -20,16 +20,10 @@ async def handle_external_webhook(
     s: ReviewService = Depends(get_service)
 ):
     
-    action = data.get("action")
-    if action not in ["created", "opened"]:  # GitHub использует "created", GitLab "opened"
-        return {
-            "status": "ignored",
-            "message": f"Action '{action}' is not supported. Only 'created' or 'opened' actions trigger reviews",
-        }
-
     comment_body = data.get("comment", {}).get("body", "").strip()
+    print(comment_body)
 
-    if comment_body not in ["/ai-review", "/ai-feedback"]:
+    if comment_body.split()[0] not in ["/ai-review", "/ai-feedback"]:
         return {"status": "ignored", "message": "No /ai-review, /ai-feedback command found"}
 
     if comment_body.startswith("/ai-feedback"):
@@ -46,14 +40,21 @@ async def handle_external_webhook(
 
         if not all([pr_num, owner, repo_name]):
             return {"status": "ignored", "reason": "Missing metadata (PR number, owner, or repo)"}
+        s.update_review_feedback(owner, repo_name, pr_num, liked)
         
     elif comment_body.startswith("/ai-review"):
+
+        action = data.get("action")
+        if action not in ["created", "opened"]:  # GitHub использует "created", GitLab "opened"
+            return {
+                "status": "ignored",
+                "message": f"Action '{action}' is not supported. Only 'created' or 'opened' actions trigger reviews",
+            }
         if not data.get("issue", {}).get("pull_request"):
             return {"status": "ignored", "message": "Not a pull request"}
         
     s.send_to_broker(data)
     return {"status": "dispatched", "message": "Data is in the queue"}
-
 
 @admin_router.get("/stats", response_model=GlobalStatsResponse)
 def get_global_metrics(days: int = 7, repo_id: Optional[int] = None, s: ReviewService = Depends(get_service)):
