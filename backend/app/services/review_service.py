@@ -164,8 +164,6 @@ class ReviewService:
         if not review:
             return None
         
-        if DEBUG:
-            print("Review was getting from bd")
 
         review.is_liked = liked
         self.db.commit()
