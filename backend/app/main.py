@@ -30,4 +30,11 @@ app.add_middleware(
 
 @app.get("/")
 def health_check():
-    return {"status": "ok"
+    return {"status": "ok"}
+
+
+def foo(arr):
+    s = ""
+    for x in arr:
+        s += x + "\n"
+    return s
