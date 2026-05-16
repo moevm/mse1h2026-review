@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
 from app.models.domain import Repository, PullRequest, Review, ReviewStatItem
 from app.core.config import RABBIT_HOST, RABBIT_PASS, RABBIT_USER
 from datetime import datetime, timedelta
@@ -97,10 +97,34 @@ class ReviewService:
         }
     
 
+    def get_likes_stats(self, repo_id: Optional[int] = None):
+        """
+        Возвращает агрегированную статистику лайков/дизлайков.
+        Если repo_id передан — фильтрует по репозиторию, если None — считает глобально.
+        """
+        query = self.db.query(
+            func.sum(case((Review.is_liked == True, 1), else_=0)).label("liked"),
+            func.sum(case((Review.is_liked == False, 1), else_=0)).label("disliked"),
+            func.sum(case((Review.is_liked.is_(None), 1), else_=0)).label("without_mark")
+        )
+
+        if repo_id is not None:
+            query = query.join(PullRequest).filter(PullRequest.repo_id == repo_id)
+
+        stats = query.first()
+
+        return {
+            "liked": stats[0] or 0,
+            "disliked": stats[1] or 0,
+            "without_mark": stats[2] or 0
+        }
 
 
     def get_filtered_stats(self, repo_id: Optional[int] = None, days: int = 7):
+
         start_date = datetime.now() - timedelta(days=days)
+        if days == 0:
+            start_date = datetime.min
         
         query = self.db.query(
             func.count(Review.id),

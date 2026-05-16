@@ -23,6 +23,11 @@ class GlobalStatsResponse(BaseModel):
     avg_duration_ms: float
     chart_data: Dict[str, int]
 
+class GlobalLikesResponse(BaseModel):
+    liked: int
+    disliked: int
+    without_mark: int
+
 class ModelConfigResponse(BaseModel):
     model: str
     max_tokens: int 
@@ -40,7 +45,6 @@ class PromptConfigResponse(BaseModel):
     mode: str
     prompt_text: str
     updated_at: datetime
-
 
 class ModelConfigUpdate(BaseModel):
     model: str = Field(..., description="Название модели, например, llama3")
@@ -64,7 +68,6 @@ class PromptConfigUpdate(BaseModel):
 
     class Config:
         from_attributes = True    
-
 
 class RepositoryShortResponse(BaseModel):
     id: int

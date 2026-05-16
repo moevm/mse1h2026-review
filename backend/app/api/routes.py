@@ -4,7 +4,7 @@ from app.core.database import get_db
 from app.services.review_service import ReviewService
 from app.services.config_service import ConfigService
 from app.schemas.dto import (
-    ReviewCreate, PRDetailsResponse, GlobalStatsResponse, 
+    ReviewCreate, PRDetailsResponse, GlobalStatsResponse, GlobalLikesResponse,
     ModelConfigResponse, ModelConfigUpdate, 
     PromptConfigResponse, PromptConfigUpdate,
     RepositoryShortResponse
@@ -73,6 +73,13 @@ def get_global_metrics(
     return s.get_filtered_stats(repo_id=repo_id, days=days)
 
 
+@admin_router.get("/repos/likes", response_model=GlobalLikesResponse)
+def get_actual_likes_stats(
+    repo_id: Optional[int] = None,
+    s: ReviewService = Depends(get_service),
+):
+    return s.get_likes_stats(repo_id=repo_id)
+
 @worker_router.post("/repos/{owner}/{repo}/pulls/{pr_num}/reviews")
 def create_review(owner: str, repo: str, pr_num: int, data: ReviewCreate, s: ReviewService = Depends(get_service)):
     return s.save_review(owner, repo, pr_num, data)
@@ -84,6 +91,32 @@ def update_feedback(owner: str, repo: str, pr_num: int, liked: bool, s: ReviewSe
         raise HTTPException(status_code=404, detail="Ревью для обновления не найдено")
     return {"status": "updated"}
 
+@worker_router.get("/config/model", response_model=ModelConfigResponse)
+def get_model_config(
+    repo_id: Optional[int] = None, 
+    s: ConfigService = Depends(get_config_service)
+):
+    config = s.get_model_config(repo_id)
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Конфигурация модели не найдена (база не инициализирована дефолтными значениями)"
+        )
+    return config
+
+
+@worker_router.get("/config/prompt", response_model=PromptConfigResponse)
+def get_prompt_config(
+    repo_id: Optional[int] = None, 
+    s: ConfigService = Depends(get_config_service)
+):
+    config = s.get_prompt_config(repo_id)
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Конфигурация промта не найдена"
+        )
+    return config
 
 @admin_router.get("/repos/{owner}/{repo}/pulls/{pr_num}", response_model=PRDetailsResponse)
 def get_pr_analytics(owner: str, repo: str, pr_num: int, s: ReviewService = Depends(get_service)):
