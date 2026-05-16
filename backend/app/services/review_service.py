@@ -103,8 +103,8 @@ class ReviewService:
         Если repo_id передан — фильтрует по репозиторию, если None — считает глобально.
         """
         query = self.db.query(
-            func.sum(case((Review.is_liked == True, 1), else_=0)).label("liked"),
-            func.sum(case((Review.is_liked == False, 1), else_=0)).label("disliked"),
+            func.sum(case((Review.is_liked.is_(True), 1), else_=0)).label("liked"),
+            func.sum(case((Review.is_liked.is_(False), 1), else_=0)).label("disliked"),
             func.sum(case((Review.is_liked.is_(None), 1), else_=0)).label("without_mark")
         )
 

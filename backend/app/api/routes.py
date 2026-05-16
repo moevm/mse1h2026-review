@@ -92,7 +92,7 @@ def update_feedback(owner: str, repo: str, pr_num: int, liked: bool, s: ReviewSe
     return {"status": "updated"}
 
 @worker_router.get("/config/model", response_model=ModelConfigResponse)
-def get_model_config(
+def get_model_config_for_worker(
     repo_id: Optional[int] = None, 
     s: ConfigService = Depends(get_config_service)
 ):
@@ -106,7 +106,7 @@ def get_model_config(
 
 
 @worker_router.get("/config/prompt", response_model=PromptConfigResponse)
-def get_prompt_config(
+def get_prompt_config_for_worker(
     repo_id: Optional[int] = None, 
     s: ConfigService = Depends(get_config_service)
 ):
