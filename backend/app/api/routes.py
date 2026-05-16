@@ -1,9 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services.review_service import ReviewService
-from app.schemas.dto import ReviewCreate, PRDetailsResponse, GlobalStatsResponse
-from typing import Optional
+from app.services.config_service import ConfigService
+from app.schemas.dto import (
+    ReviewCreate, PRDetailsResponse, GlobalStatsResponse, 
+    ModelConfigResponse, ModelConfigUpdate, 
+    PromptConfigResponse, PromptConfigUpdate,
+    RepositoryShortResponse
+)
+from typing import Optional, List
 
 
 worker_router = APIRouter()
@@ -11,6 +17,9 @@ admin_router = APIRouter()
 
 def get_service(db: Session = Depends(get_db)):
     return ReviewService(db)
+
+def get_config_service(db: Session = Depends(get_db)):
+    return ConfigService(db)
 
 @worker_router.post("/webhook")
 async def handle_external_webhook(
@@ -86,3 +95,60 @@ def get_pr_analytics(owner: str, repo: str, pr_num: int, s: ReviewService = Depe
 @admin_router.get("/pulls")
 def get_all_prs(s: ReviewService = Depends(get_service)):
     return s.get_all_pull_requests_summary()
+
+
+
+@admin_router.get("/config/model", response_model=ModelConfigResponse)
+def get_model_config(
+    repo_id: Optional[int] = None, 
+    s: ConfigService = Depends(get_config_service)
+):
+    config = s.get_model_config(repo_id)
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Конфигурация модели не найдена (база не инициализирована дефолтными значениями)"
+        )
+    return config
+
+
+@admin_router.post("/config/model", response_model=ModelConfigResponse)
+def update_model_config(
+    body: ModelConfigUpdate, 
+    repo_id: Optional[int] = None, 
+    s: ConfigService = Depends(get_config_service)
+):
+    return s.update_model_config(repo_id=repo_id, data=body)
+
+
+# ==========================================
+# РУЧКИ ДЛЯ PROMPT CONFIG
+# ==========================================
+
+@admin_router.get("/config/prompt", response_model=PromptConfigResponse)
+def get_prompt_config(
+    repo_id: Optional[int] = None, 
+    s: ConfigService = Depends(get_config_service)
+):
+    config = s.get_prompt_config(repo_id)
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Конфигурация промта не найдена"
+        )
+    return config
+
+
+@admin_router.post("/config/prompt", response_model=PromptConfigResponse)
+def update_prompt_config(
+    body: PromptConfigUpdate, 
+    repo_id: Optional[int] = None, 
+    s: ConfigService = Depends(get_config_service)
+):
+    return s.update_prompt_config(repo_id=repo_id, data=body)
+
+
+@admin_router.get("/repositories", response_model=List[RepositoryShortResponse])
+def get_admin_repositories(db: Session = Depends(get_db)):
+    service = ReviewService(db)
+    return service.get_all_repositories()

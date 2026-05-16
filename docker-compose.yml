@@ -29,6 +29,8 @@ services:
       - backend_net
       - frontend_net
       - mq_net
+    volumes:
+      - ./config:/app/config:ro  
     depends_on:
       db:
         condition: service_healthy
@@ -105,6 +107,8 @@ services:
       networks:
         - mq_net
         - ai_net
+      volumes:
+      - ./config:/app/config:ro  
       depends_on:
         rabbitmq:
           condition: service_healthy

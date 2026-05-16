@@ -169,3 +169,7 @@ class ReviewService:
         self.db.commit()
         return review
     
+
+    def get_all_repositories(self):
+        return self.db.query(Repository).order_by(Repository.id.asc()).all()
+    
