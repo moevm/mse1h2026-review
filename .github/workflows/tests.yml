@@ -1,4 +1,4 @@
-name: Integration Tests
+name: Integration and Functional Tests
 
 on:
   push:
@@ -22,6 +22,6 @@ jobs:
           echo "RABBIT_USER=${{ secrets.RABBIT_USER || 'rabbit_user' }}" >> .env
           echo "RABBIT_PASS=${{ secrets.RABBIT_PASS || 'secure_password_mq' }}" >> .env
 
-      - name: Run Integration Tests
+      - name: Run Tests
         run: |
           docker compose --profile tests up --build --exit-code-from backend-tests backend-tests
