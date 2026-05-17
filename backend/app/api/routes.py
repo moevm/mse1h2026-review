@@ -91,7 +91,6 @@ def update_feedback(owner: str, repo: str, pr_num: int, liked: bool, s: ReviewSe
         raise HTTPException(status_code=404, detail="Ревью для обновления не найдено")
     return {"status": "updated"}
 
-<<<<<<< HEAD
 @worker_router.get("/repo/id")
 def get_repo_id(
     owner: str,
@@ -135,8 +134,6 @@ def get_prompt_config_for_worker(
             detail="Конфигурация промта не найдена"
         )
     return config
-=======
->>>>>>> origin
 
 @admin_router.get("/repos/{owner}/{repo}/pulls/{pr_num}", response_model=PRDetailsResponse)
 def get_pr_analytics(owner: str, repo: str, pr_num: int, s: ReviewService = Depends(get_service)):
