@@ -98,8 +98,8 @@ services:
   consumer:
       container_name: consumer
       build:
-        context: ./consumer
-        dockerfile: Dockerfile
+        context: .
+        dockerfile: consumer/Dockerfile
       environment:
         - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
         - GITHUB_TOKEN=${GITHUB_TOKEN}
@@ -107,8 +107,6 @@ services:
       networks:
         - mq_net
         - ai_net
-      volumes:
-      - ./config:/app/config:ro  
       depends_on:
         rabbitmq:
           condition: service_healthy

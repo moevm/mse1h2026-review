@@ -17,9 +17,18 @@ def get_branch(repo, pr, token):
     headers = {"Authorization": f"token {token}"} if token else {}
 
     r = requests.get(url, headers=headers)
+
     if r.status_code == 200:
         return r.json()["head"]["ref"]
-    return None
+    else:
+        logger.error(
+            "github_api_error",
+            status_code=r.status_code,
+            repo=repo,
+            pr=pr,
+            response=r.text[:200]  # Первые 200 символов ответа
+        )
+        return None
 
 
 def callback(ch, method, properties, body):
