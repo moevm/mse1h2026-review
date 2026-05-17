@@ -91,32 +91,6 @@ def update_feedback(owner: str, repo: str, pr_num: int, liked: bool, s: ReviewSe
         raise HTTPException(status_code=404, detail="Ревью для обновления не найдено")
     return {"status": "updated"}
 
-@worker_router.get("/config/model", response_model=ModelConfigResponse)
-def get_model_config_for_worker(
-    repo_id: Optional[int] = None, 
-    s: ConfigService = Depends(get_config_service)
-):
-    config = s.get_model_config(repo_id)
-    if not config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Конфигурация модели не найдена (база не инициализирована дефолтными значениями)"
-        )
-    return config
-
-
-@worker_router.get("/config/prompt", response_model=PromptConfigResponse)
-def get_prompt_config_for_worker(
-    repo_id: Optional[int] = None, 
-    s: ConfigService = Depends(get_config_service)
-):
-    config = s.get_prompt_config(repo_id)
-    if not config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Конфигурация промта не найдена"
-        )
-    return config
 
 @admin_router.get("/repos/{owner}/{repo}/pulls/{pr_num}", response_model=PRDetailsResponse)
 def get_pr_analytics(owner: str, repo: str, pr_num: int, s: ReviewService = Depends(get_service)):
@@ -130,19 +104,48 @@ def get_all_prs(s: ReviewService = Depends(get_service)):
     return s.get_all_pull_requests_summary()
 
 
+def fetch_model_config(repo_id: Optional[int], s: ConfigService, type="model"):
+    if type == "model":
+        config = s.get_model_config(repo_id)
+        if not config:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="Конфигурация модели не найдена (база не инициализирована дефолтными значениями)"
+            )
+        return config
+    
+    elif type == "prompt":
+        config = s.get_prompt_config(repo_id)
+        if not config:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="Конфигурация промта не найдена"
+            )
+        return config
+    
+    
+@worker_router.get("/config/model", response_model=ModelConfigResponse)
+def get_model_config_for_worker(
+    repo_id: Optional[int] = None, 
+    s: ConfigService = Depends(get_config_service)
+):
+    return fetch_model_config(repo_id, s, "model")
+
+
+@worker_router.get("/config/prompt", response_model=PromptConfigResponse)
+def get_prompt_config_for_worker(
+    repo_id: Optional[int] = None, 
+    s: ConfigService = Depends(get_config_service)
+):
+    return fetch_model_config(repo_id, s, "prompt")
+
 
 @admin_router.get("/config/model", response_model=ModelConfigResponse)
 def get_model_config(
     repo_id: Optional[int] = None, 
     s: ConfigService = Depends(get_config_service)
 ):
-    config = s.get_model_config(repo_id)
-    if not config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Конфигурация модели не найдена (база не инициализирована дефолтными значениями)"
-        )
-    return config
+    return fetch_model_config(repo_id, s, "model")
 
 
 @admin_router.post("/config/model", response_model=ModelConfigResponse)
@@ -163,13 +166,7 @@ def get_prompt_config(
     repo_id: Optional[int] = None, 
     s: ConfigService = Depends(get_config_service)
 ):
-    config = s.get_prompt_config(repo_id)
-    if not config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Конфигурация промта не найдена"
-        )
-    return config
+    return fetch_model_config(repo_id, s, "prompt")
 
 
 @admin_router.post("/config/prompt", response_model=PromptConfigResponse)

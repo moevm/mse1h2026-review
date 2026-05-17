@@ -12,9 +12,7 @@ from app.core.database import SessionLocal
 async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
-        print("[DEBUG] PUPUPU????")
         init_default_configs(db)
-        print("[DEBUG] PUPUPU!!!")
 
     except Exception as e:
         print(f"!!! Ошибка при инициализации дефолтных конфигов: {e}")
