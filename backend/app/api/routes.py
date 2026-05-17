@@ -91,6 +91,23 @@ def update_feedback(owner: str, repo: str, pr_num: int, liked: bool, s: ReviewSe
         raise HTTPException(status_code=404, detail="Ревью для обновления не найдено")
     return {"status": "updated"}
 
+@worker_router.get("/repo/id")
+def get_repo_id(
+    owner: str,
+    repo: str,
+    s: ReviewService = Depends(get_service)
+):
+    """Получить ID репозитория по owner и repo"""
+    repo_id = s.get_repository_id(owner, repo)
+
+    if not repo_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Репозиторий {owner}/{repo} не найден"
+        )
+
+    return {"id": repo_id}
+
 @worker_router.get("/config/model", response_model=ModelConfigResponse)
 def get_model_config_for_worker(
     repo_id: Optional[int] = None, 
