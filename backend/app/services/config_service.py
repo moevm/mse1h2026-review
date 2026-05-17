@@ -38,10 +38,6 @@ class ConfigService:
         self.db.commit()
         self.db.refresh(config)
 
-        broker_payload = {
-            "repository_id": repo_id,
-            "fields": data.model_dump()
-        }
 
         return config
 
@@ -68,11 +64,6 @@ class ConfigService:
 
         self.db.commit()
         self.db.refresh(config)
-
-        broker_payload = {
-            "repository_id": repo_id,
-            "fields": data.model_dump()
-        }
 
         return config
     
