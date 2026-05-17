@@ -1,45 +1,10 @@
-import json
-import pika
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.domain import ModelConfig, PromptConfig
-from app.core.config import RABBIT_HOST, RABBIT_PASS, RABBIT_USER
-from fastapi import HTTPException
 
 class ConfigService:
     def __init__(self, db: Session):
         self.db = db
-
-    def send_to_broker(self, message: dict, msg_type: str):
-
-        try:
-            credentials = pika.PlainCredentials(RABBIT_USER, RABBIT_PASS)
-            parameters = pika.ConnectionParameters(
-                host=RABBIT_HOST, 
-                credentials=credentials,
-                heartbeat=600,
-                blocked_connection_timeout=300
-            )
-            
-            connection = pika.BlockingConnection(parameters)
-            channel = connection.channel()
-            channel.queue_declare(queue='webhook_queue', durable=True)
-            
-
-            channel.basic_publish(
-                exchange='',
-                routing_key='webhook_queue',
-                body=json.dumps(message),
-                properties=pika.BasicProperties(
-                    delivery_mode=2, 
-                    type=msg_type
-                )
-            )
-            connection.close()
-        except Exception as e:
-            print(f"!!! ОШИБКА RABBITMQ В CONFIG_SERVICE: {type(e).__name__}: {e}")
-            raise HTTPException(status_code=500, detail=f"Broker error: {str(e)}") from e
-
 
     def get_model_config(self, repo_id: Optional[int] = None) -> Optional[ModelConfig]:
         """Получение конфига: сначала ищем кастомный для repo_id, если нет — отдаем дефолт"""
@@ -51,7 +16,7 @@ class ConfigService:
         return self.db.query(ModelConfig).filter_by(repository_id=None).first()
 
     def update_model_config(self, repo_id: Optional[int], data) -> ModelConfig:
-        """Реализация UPSERT для конфигурации модели + нотификация брокера"""
+        """Реализация UPSERT для конфигурации модели"""
         config = self.db.query(ModelConfig).filter_by(repository_id=repo_id).first()
         
         if not config:
@@ -73,11 +38,6 @@ class ConfigService:
         self.db.commit()
         self.db.refresh(config)
 
-        broker_payload = {
-            "repository_id": repo_id,
-            "fields": data.model_dump()
-        }
-        self.send_to_broker(broker_payload, msg_type="model_config_update")
 
         return config
 
@@ -91,7 +51,7 @@ class ConfigService:
         return self.db.query(PromptConfig).filter_by(repository_id=None).first()
 
     def update_prompt_config(self, repo_id: Optional[int], data) -> PromptConfig:
-        """Реализация UPSERT для промта (mode теперь внутри промта) + нотификация брокера"""
+        """Реализация UPSERT для промта (mode теперь внутри промта)"""
         config = self.db.query(PromptConfig).filter_by(repository_id=repo_id).first()
         
         if not config:
@@ -104,12 +64,6 @@ class ConfigService:
 
         self.db.commit()
         self.db.refresh(config)
-
-        broker_payload = {
-            "repository_id": repo_id,
-            "fields": data.model_dump()
-        }
-        self.send_to_broker(broker_payload, msg_type="prompt_config_update")
 
         return config
     
