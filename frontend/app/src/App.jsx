@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import logoImg from './logo.png';
 import modelsList from "../context/models_list?raw";
@@ -37,7 +37,7 @@ function App() {
     const [reviewMode, setReviewMode] = useState('FULL_FILE_DIFF');
     const [availableModels] = useState(() => {
         try {
-            const parsedModels = modelsListRaw
+            const parsedModels = modelsList
                 .split('\n')
                 .map(line => line.trim())
                 .filter(line => line.length > 0);
@@ -48,24 +48,6 @@ function App() {
             return ['Gemini 1.5 Pro', 'Gemini 1.5 Flash', 'qwen2.5-coder:1.5b'];
         }
     });
-
-
-
-    const fetchStats = async () => {
-        try {
-            const daysValue = timeRange === 'All time' ? 0 : parseInt(timeRange);
-            const query = new URLSearchParams({
-                repo: repository,
-                days: daysValue
-            }).toString();
-
-            const response = await fetch(`http://localhost:8000/admin/stats?${query}`);
-            const data = await response.json();
-            setStats(data);
-        } catch (error) {
-            console.error("Ошибка при загрузке статистики:", error);
-        }
-    };
 
     const TYPES_COLOR_MAP = {
         "Syntax Error": "#0984e3",
@@ -109,6 +91,7 @@ function App() {
 
     const fetchRepositories = async () => {
         try {
+            console.log("[INIT] Загрузка репозиториев и пул-реквестов...");
             const [pullsResponse, reposResponse] = await Promise.all([
                 fetch('http://localhost:8000/admin/pulls'),
                 fetch('http://localhost:8000/admin/repositories')
@@ -129,7 +112,7 @@ function App() {
                 fetchModelConfig(0);
             }
         } catch (error) {
-            console.error("Ошибка при инициализации данных:", error);
+            console.error("Ошибка инициализации списков репозиториев:", error);
         }
     };
 
@@ -140,16 +123,6 @@ function App() {
             setDetails(data);
         } catch (error) {
             console.error("Ошибка при загрузке деталей PR:", error);
-        }
-    };
-
-    const fetchGlobalLikes = async () => {
-        try {
-            const response = await fetch('http://localhost:8000/admin/repos/likes');
-            const data = await response.json();
-            setGlobalLikes(data);
-        } catch (error) {
-            console.error("Ошибка при загрузке общих лайков:", error);
         }
     };
 
@@ -181,7 +154,6 @@ function App() {
     const fetchModelConfig = async (repoId) => {
         try {
             const query = new URLSearchParams({ repo_id: repoId }).toString();
-            console.log(`[GET] Запрос конфигурации и промпта для repoId: ${repoId}`);
 
             const [modelResponse, promptResponse] = await Promise.all([
                 fetch(`http://localhost:8000/admin/config/model?${query}`),
@@ -205,11 +177,10 @@ function App() {
             if (promptResponse.ok) {
                 const promptData = await promptResponse.json();
                 setPromptText(promptData.prompt_text || '');
-                setReviewMode(promptData.mode);
-            } else {
-                console.error(`[GET Prompt] Бэк вернул ошибку: ${promptResponse.status}`);
+                if (promptData.mode) {
+                    setReviewMode(promptData.mode);
+                }
             }
-
         } catch (error) {
             console.error("[GET] Ошибка при получении конфигурации или промпта:", error);
         }
@@ -236,7 +207,6 @@ function App() {
             mode: reviewMode
         };
 
-
         try {
             const [modelResponse, promptResponse] = await Promise.all([
                 fetch(`http://localhost:8000/admin/config/model?${query}`, {
@@ -252,13 +222,9 @@ function App() {
             ]);
 
             if (modelResponse.ok && promptResponse.ok) {
-                console.log("[POST] Все конфигурации успешно сохранены!");
                 alert("Changes applied successfully!");
             } else {
-                let errorMsg = "Failed to apply changes:";
-                if (!modelResponse.ok) errorMsg += " [Model Error]";
-                if (!promptResponse.ok) errorMsg += " [Prompt Error]";
-                alert(errorMsg);
+                alert("Failed to apply changes.");
             }
         } catch (error) {
             console.error("[POST] Ошибка при сохранении изменений:", error);
@@ -267,11 +233,12 @@ function App() {
     };
 
     useEffect(() => {
-        fetchRepositories();
+        setTimeout(() => {
+            fetchRepositories();
+        }, 0);
     }, []);
 
     useEffect(() => {
-        console.log("[useEffect Trigger] Изменился paramRepository:", paramRepository);
         if (paramRepository !== undefined && paramRepository !== null && !isNaN(paramRepository)) {
             fetchModelConfig(paramRepository);
         }
@@ -346,6 +313,32 @@ function App() {
     };
 
     useEffect(() => {
+        const fetchStatsInside = async () => {
+            try {
+                const daysValue = timeRange === 'All time' ? 0 : parseInt(timeRange);
+                const query = new URLSearchParams({
+                    repo: repository,
+                    days: daysValue
+                }).toString();
+
+                const response = await fetch(`http://localhost:8000/admin/stats?${query}`);
+                const data = await response.json();
+                setStats(data);
+            } catch (error) {
+                console.error("Ошибка при загрузке статистики:", error);
+            }
+        };
+
+        const fetchGlobalLikesInside = async () => {
+            try {
+                const response = await fetch('http://localhost:8000/admin/repos/likes');
+                const data = await response.json();
+                setGlobalLikes(data);
+            } catch (error) {
+                console.error("Ошибка при загрузке общих лайков:", error);
+            }
+        };
+
         if (repository !== 'All repositories' && pullRequest !== 'All PRs') {
             const selectedPrObj = allPrs.find(
                 p => p.repo === repository && p.pr_number.toString() === pullRequest
@@ -358,11 +351,11 @@ function App() {
         } else {
             setTimeout(() => {
                 setDetails(null);
-                fetchStats();
-                fetchGlobalLikes();
+                fetchStatsInside();
+                fetchGlobalLikesInside();
             }, 0);
         }
-    }, [repository, pullRequest, timeRange, allPrs, fetchStats, fetchGlobalLikes]);
+    }, [repository, pullRequest, timeRange, allPrs]);
 
     return (
         <div className="admin-layout">
