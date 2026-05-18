@@ -35,9 +35,9 @@ function App() {
     const [githubTimeout, setGithubTimeout] = useState(120);
     const [promptText, setPromptText] = useState('');
     const [reviewMode, setReviewMode] = useState('FULL_FILE_DIFF');
-    const [availableModels, setAvailableModels] = useState(() => {
+    const [availableModels] = useState(() => {
         try {
-            const parsedModels = modelsList
+            const parsedModels = modelsListRaw
                 .split('\n')
                 .map(line => line.trim())
                 .filter(line => line.length > 0);
@@ -92,7 +92,7 @@ function App() {
         if (!data || Object.keys(data).length === 0) return "#eee";
 
         const entries = Object.entries(data);
-        let total = entries.reduce((acc, [_, val]) => acc + val, 0);
+        let total = entries.reduce((acc, [, val]) => acc + val, 0);
         if (total === 0) return "#eee";
 
         let currentPercent = 0;
@@ -266,31 +266,32 @@ function App() {
         }
     };
 
-
     useEffect(() => {
-        if (paramRepository !== undefined && paramRepository !== null && !isNaN(paramRepository)) {
-            fetchModelConfig(paramRepository);
-        } else {
-            console.warn("[useEffect Trigger] paramRepository имеет неверное значение:", paramRepository);
-        }
-    }, [paramRepository]);
-
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchRepositories();
     }, []);
 
     useEffect(() => {
+        console.log("[useEffect Trigger] Изменился paramRepository:", paramRepository);
+        if (paramRepository !== undefined && paramRepository !== null && !isNaN(paramRepository)) {
+            fetchModelConfig(paramRepository);
+        }
+    }, [paramRepository]);
+
+    useEffect(() => {
         if (repository === 'All repositories') {
-            setPullRequests(['All PRs']);
-            setPullRequest('All PRs');
+            setTimeout(() => {
+                setPullRequests(['All PRs']);
+                setPullRequest('All PRs');
+            }, 0);
         } else {
             const filteredPrs = allPrs
                 .filter(item => item.repo === repository)
                 .map(item => item.pr_number.toString());
 
-            setPullRequests(['All PRs', ...filteredPrs]);
-            setPullRequest('All PRs');
+            setTimeout(() => {
+                setPullRequests(['All PRs', ...filteredPrs]);
+                setPullRequest('All PRs');
+            }, 0);
         }
     }, [repository, allPrs]);
 
@@ -349,16 +350,19 @@ function App() {
             const selectedPrObj = allPrs.find(
                 p => p.repo === repository && p.pr_number.toString() === pullRequest
             );
-
             if (selectedPrObj) {
-                fetchPRDetails(selectedPrObj.owner, selectedPrObj.repo, selectedPrObj.pr_number);
+                setTimeout(() => {
+                    fetchPRDetails(selectedPrObj.owner, selectedPrObj.repo, selectedPrObj.pr_number);
+                }, 0);
             }
         } else {
-            setDetails(null);
-            fetchStats();
-            fetchGlobalLikes();
+            setTimeout(() => {
+                setDetails(null);
+                fetchStats();
+                fetchGlobalLikes();
+            }, 0);
         }
-    }, [repository, pullRequest, timeRange]);
+    }, [repository, pullRequest, timeRange, allPrs, fetchStats, fetchGlobalLikes]);
 
     return (
         <div className="admin-layout">
