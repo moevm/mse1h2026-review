@@ -434,14 +434,15 @@ select {
   width: 100%;
   background: #adcfff;
   border: none;
-  padding: 22px;
+  padding: 5px;
   border-radius: 40px;
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
   grid-row: 2 / 2;
   align-self: end;
   margin-top: -40px;
+  height: 40px;
 }
 
 .apply-btn:hover {
@@ -474,6 +475,12 @@ select {
   display: flex;
   gap: 150px;
   margin-bottom: 40px;
+}
+
+.inputs-inline-row-2 {
+  display: flex;
+  gap: 150px;
+  margin-top: 35px;
 }
 
 .inputs-inline-row .input-group {

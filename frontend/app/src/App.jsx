@@ -18,6 +18,7 @@ function App() {
 
     const [pullRequest, setPullRequest] = useState('All PRs');
     const [pullRequests, setPullRequests] = useState(['All PRs']);
+    const [globalLikes, setGlobalLikes] = useState({ liked: 0, disliked: 0, without_mark: 0 });
 
 
 
@@ -107,27 +108,42 @@ function App() {
         }
     };
 
+    const fetchGlobalLikes = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/admin/repos/likes');
+            const data = await response.json();
+            setGlobalLikes(data);
+        } catch (error) {
+            console.error("Ошибка при загрузке общих лайков:", error);
+        }
+    };
+
     const displayStats = details ? {
         total_reviews: allPrs.find(p => p.pr_number === details.pr_number && p.repo === repository)?.reviews_count || 0,
         total_comments: details.comment_count || 0,
         avg_duration_ms: details.duration_ms || 0
     } : stats;
 
-    const likesCount = allPrs.filter(p => p.is_liked === true).length;
-    const dislikesCount = allPrs.filter(p => p.is_liked === false).length;
-    const noInfoCount = allPrs.filter(p => p.is_liked === null || p.is_liked === undefined).length;
 
-    const likesChartData = {
-        "Liked": likesCount,
-        "Disliked": dislikesCount,
-        "No information": noInfoCount
-    };
+    const likesChartData = details
+        ? {
+            "Liked": details.is_liked === true ? 1 : 0,
+            "Disliked": details.is_liked === false ? 1 : 0,
+            "No information": (details.is_liked === null || details.is_liked === undefined) ? 1 : 0
+        }
+        : {
+            "Liked": globalLikes.liked,
+            "Disliked": globalLikes.disliked,
+            "No information": globalLikes.without_mark
+        };
 
     const LIKES_COLOR_MAP = {
         "Liked": "#55efc4",
         "Disliked": "#ff7675",
         "No information": "#dfe6e9"
     };
+
+
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -210,6 +226,7 @@ function App() {
         } else {
             setDetails(null);
             fetchStats();
+            fetchGlobalLikes();
         }
     }, [repository, pullRequest, timeRange]);
 
@@ -514,6 +531,42 @@ function App() {
                                             className="styled-input"
                                         />
                                     </div>
+
+                                    <div className="inputs-inline-row-2">
+                                        <div className="input-group">
+                                            <label className="label-name">
+                                                Seed
+                                                <span className="help-icon"
+                                                      data-tooltip="The starting numerical value that initiates the pseudo-random number generator.">
+                                                    ?
+                                                </span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                step="1"
+                                                defaultValue="42"
+                                                onKeyDown={handleIntegerOnly}
+                                                className="styled-input"
+                                            />
+                                        </div>
+                                        <div className="input-group">
+                                            <label className="label-name">
+                                                Concurrency
+                                                <span className="help-icon"
+                                                      data-tooltip="The number of simultaneous requests to the model.">
+                                                    ?
+                                                </span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                step="1"
+                                                defaultValue="2"
+                                                onKeyDown={handleIntegerOnly}
+                                                className="styled-input" />
+                                        </div>
+                                    </div>
                                 </section>
 
                                 <section className="params-card">
@@ -542,7 +595,20 @@ function App() {
                                         <p className="hint">Default network request timeout for API calls</p>
                                     </div>
                                 </section>
-
+                                <section className="params-card">
+                                    <label className="section-label">Waiting GitHub</label>
+                                    <div className="input-group">
+                                        <label className="label-name">Timeout (sec)</label>
+                                        <input type="number"
+                                               min="1"
+                                               step="1"
+                                               defaultValue="120"
+                                               onKeyDown={handleIntegerOnly}
+                                               className="styled-input"
+                                        />
+                                        <p className="hint">Waiting for a response from GitHub</p>
+                                    </div>
+                                </section>
                                 <section className="params-card">
                                     <label className="section-label">Review</label>
                                     <label className="label-name">Review mode</label>
