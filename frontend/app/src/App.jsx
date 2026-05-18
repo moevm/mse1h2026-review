@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import logoImg from './logo.png';
+import modelsList from "../context/models_list?raw";
 
 function App() {
     const [repository, setRepository] = useState('All repositories');
     const [timeRange, setTimeRange] = useState('7 days');
-    const [repositories, setRepositories] = useState(['All repositories']);
+    const [repositories, setRepositories] = useState([{ id: 0, name: 'All repositories' }]);
     const [stats, setStats] = useState({
         total_reviews: 0,
         total_comments: 0,
@@ -18,7 +19,35 @@ function App() {
 
     const [pullRequest, setPullRequest] = useState('All PRs');
     const [pullRequests, setPullRequests] = useState(['All PRs']);
-    const [globalLikes, setGlobalLikes] = useState({ liked: 0, disliked: 0, without_mark: 0 });
+    const [globalLikes, setGlobalLikes] = useState({
+        liked: 0,
+        disliked: 0,
+        without_mark: 0
+    });
+    const [paramRepository, setParamRepository] = useState(0);
+    const [selectedModel, setSelectedModel] = useState('Gemini 1.5 Pro');
+    const [maxTokens, setMaxTokens] = useState(5000);
+    const [contextSize, setContextSize] = useState(5000);
+    const [repeatPenalty, setRepeatPenalty] = useState(1.1);
+    const [seed, setSeed] = useState(42);
+    const [concurrency, setConcurrency] = useState(2);
+    const [networkTimeout, setNetworkTimeout] = useState(500);
+    const [githubTimeout, setGithubTimeout] = useState(120);
+    const [promptText, setPromptText] = useState('');
+    const [reviewMode, setReviewMode] = useState('FULL_FILE_DIFF');
+    const [availableModels, setAvailableModels] = useState(() => {
+        try {
+            const parsedModels = modelsList
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+
+            return parsedModels.length > 0 ? parsedModels : ['Gemini 1.5 Pro', 'Gemini 1.5 Flash', 'qwen2.5-coder:1.5b'];
+        } catch (e) {
+            console.error("Не удалось распарсить локальный файл моделей:", e);
+            return ['Gemini 1.5 Pro', 'Gemini 1.5 Flash', 'qwen2.5-coder:1.5b'];
+        }
+    });
 
 
 
@@ -80,21 +109,27 @@ function App() {
 
     const fetchRepositories = async () => {
         try {
-            const response = await fetch('http://localhost:8000/admin/pulls');
-            const data = await response.json();
+            const [pullsResponse, reposResponse] = await Promise.all([
+                fetch('http://localhost:8000/admin/pulls'),
+                fetch('http://localhost:8000/admin/repositories')
+            ]);
 
-            if (data && data.length > 0) {
-                setAllPrs(data);
+            if (pullsResponse.ok) {
+                const pullsData = await pullsResponse.json();
+                setAllPrs(pullsData);
+            }
 
-                const uniqueRepoNames = Array.from(new Set(data.map(item => item.repo)));
-
-                setRepositories([
-                    'All repositories',
-                    ...uniqueRepoNames
-                ]);
+            if (reposResponse.ok) {
+                const reposData = await reposResponse.json();
+                const formattedRepos = [
+                    { id: 0, name: 'All repositories' },
+                    ...reposData.map(r => ({ id: r.id, name: r.name }))
+                ];
+                setRepositories(formattedRepos);
+                fetchModelConfig(0);
             }
         } catch (error) {
-            console.error("Ошибка:", error);
+            console.error("Ошибка при инициализации данных:", error);
         }
     };
 
@@ -143,7 +178,102 @@ function App() {
         "No information": "#dfe6e9"
     };
 
+    const fetchModelConfig = async (repoId) => {
+        try {
+            const query = new URLSearchParams({ repo_id: repoId }).toString();
+            console.log(`[GET] Запрос конфигурации и промпта для repoId: ${repoId}`);
 
+            const [modelResponse, promptResponse] = await Promise.all([
+                fetch(`http://localhost:8000/admin/config/model?${query}`),
+                fetch(`http://localhost:8000/admin/config/prompt?${query}`)
+            ]);
+
+            if (modelResponse.ok) {
+                const data = await modelResponse.json();
+                setSelectedModel(data.model || 'Gemini 1.5 Pro');
+                setMaxTokens(data.max_tokens || 5000);
+                setTemperature(data.temperature ?? 0.2);
+                setContextSize(data.num_ctx || 5000);
+                setNucleusSampling(data.top_p ?? 0.7);
+                setRepeatPenalty(data.repeat_penalty || 1.1);
+                setSeed(data.seed || 42);
+                setConcurrency(data.concurrency || 2);
+                setNetworkTimeout(data.llm_http_client_timeout || 500);
+                setGithubTimeout(data.vcs_http_client_timeout || 120);
+            }
+
+            if (promptResponse.ok) {
+                const promptData = await promptResponse.json();
+                setPromptText(promptData.prompt_text || '');
+                setReviewMode(promptData.mode);
+            } else {
+                console.error(`[GET Prompt] Бэк вернул ошибку: ${promptResponse.status}`);
+            }
+
+        } catch (error) {
+            console.error("[GET] Ошибка при получении конфигурации или промпта:", error);
+        }
+    };
+
+    const handleApplyChanges = async () => {
+        const query = new URLSearchParams({ repo_id: paramRepository }).toString();
+
+        const configPayload = {
+            model: selectedModel,
+            max_tokens: parseInt(maxTokens),
+            temperature: parseFloat(temperature),
+            num_ctx: parseInt(contextSize),
+            top_p: parseFloat(nucleusSampling),
+            repeat_penalty: parseFloat(repeatPenalty),
+            seed: parseInt(seed),
+            llm_http_client_timeout: parseInt(networkTimeout),
+            vcs_http_client_timeout: parseInt(githubTimeout),
+            concurrency: parseInt(concurrency)
+        };
+
+        const promptPayload = {
+            prompt_text: promptText,
+            mode: reviewMode
+        };
+
+
+        try {
+            const [modelResponse, promptResponse] = await Promise.all([
+                fetch(`http://localhost:8000/admin/config/model?${query}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(configPayload)
+                }),
+                fetch(`http://localhost:8000/admin/config/prompt?${query}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(promptPayload)
+                })
+            ]);
+
+            if (modelResponse.ok && promptResponse.ok) {
+                console.log("[POST] Все конфигурации успешно сохранены!");
+                alert("Changes applied successfully!");
+            } else {
+                let errorMsg = "Failed to apply changes:";
+                if (!modelResponse.ok) errorMsg += " [Model Error]";
+                if (!promptResponse.ok) errorMsg += " [Prompt Error]";
+                alert(errorMsg);
+            }
+        } catch (error) {
+            console.error("[POST] Ошибка при сохранении изменений:", error);
+            alert("Error connecting to the server.");
+        }
+    };
+
+
+    useEffect(() => {
+        if (paramRepository !== undefined && paramRepository !== null && !isNaN(paramRepository)) {
+            fetchModelConfig(paramRepository);
+        } else {
+            console.warn("[useEffect Trigger] paramRepository имеет неверное значение:", paramRepository);
+        }
+    }, [paramRepository]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -269,9 +399,9 @@ function App() {
                                         value={repository}
                                         onChange={(e) => setRepository(e.target.value)}
                                     >
-                                        {repositories.map(repoName => (
-                                            <option key={repoName} value={repoName}>
-                                                {repoName}
+                                        {repositories.map(repo => (
+                                            <option key={repo.id} value={repo.name}>
+                                                {repo.name}
                                             </option>
                                         ))}
                                     </select>
@@ -302,7 +432,11 @@ function App() {
 
                                 <div className="filter-group">
                                     <label>TIME RANGE</label>
-                                    <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)}>
+                                    <select
+                                        value={timeRange}
+                                        onChange={(e) => setTimeRange(e.target.value)}
+                                        disabled={pullRequest !== 'All PRs'}
+                                    >
                                         <option>7 days</option>
                                         <option>30 days</option>
                                         <option>All time</option>
@@ -411,10 +545,18 @@ function App() {
                             <div className="params-main-column">
                                 <section className="params-card">
                                     <label className="section-label">Choose a repository for tuning the model’s parameters:</label>
-                                    <select className="full-width-select">
-                                        <option value="">Select repository...</option>
-                                        {repositories.filter(r => r !== 'All repositories').map(repoName => (
-                                            <option key={repoName} value={repoName}>{repoName}</option>
+                                    <select
+                                        className="full-width-select"
+                                        value={paramRepository}
+                                        onChange={(e) => {
+                                            const selectedId = parseInt(e.target.value);
+                                            setParamRepository(selectedId);
+                                        }}
+                                    >
+                                        {repositories.map(repo => (
+                                            <option key={repo.id} value={repo.id}>
+                                                {repo.id === 0 ? 'All repositories (Global Config)' : repo.name}
+                                            </option>
                                         ))}
                                     </select>
                                 </section>
@@ -434,8 +576,8 @@ function App() {
                                             <input
                                                 type="number"
                                                 min="1"
-                                                step="1"
-                                                defaultValue="5000"
+                                                value={maxTokens}
+                                                onChange={(e) => setMaxTokens(e.target.value)}
                                                 onKeyDown={handleIntegerOnly}
                                                 className="styled-input"
                                             />
@@ -451,8 +593,8 @@ function App() {
                                             <input
                                                 type="number"
                                                 min="1"
-                                                step="1"
-                                                defaultValue="5000"
+                                                value={contextSize}
+                                                onChange={(e) => setContextSize(e.target.value)}
                                                 onKeyDown={handleIntegerOnly}
                                                 className="styled-input" />
                                         </div>
@@ -520,14 +662,10 @@ function App() {
                                         <input
                                             type="number"
                                             step="0.1"
-                                            min="1"
-                                            defaultValue="1.1"
+                                            min="0"
+                                            value={repeatPenalty}
+                                            onChange={(e) => setRepeatPenalty(e.target.value)}
                                             onKeyDown={handleFloatOnly}
-                                            onBlur={(e) => {
-                                                if (e.target.value.endsWith('.') || e.target.value.endsWith(',')) {
-                                                    e.target.value = e.target.value.slice(0, -1);
-                                                }
-                                            }}
                                             className="styled-input"
                                         />
                                     </div>
@@ -543,9 +681,8 @@ function App() {
                                             </label>
                                             <input
                                                 type="number"
-                                                min="1"
-                                                step="1"
-                                                defaultValue="42"
+                                                value={seed}
+                                                onChange={(e) => setSeed(e.target.value)}
                                                 onKeyDown={handleIntegerOnly}
                                                 className="styled-input"
                                             />
@@ -561,24 +698,40 @@ function App() {
                                             <input
                                                 type="number"
                                                 min="1"
-                                                step="1"
-                                                defaultValue="2"
+                                                value={concurrency}
+                                                onChange={(e) => setConcurrency(e.target.value)}
                                                 onKeyDown={handleIntegerOnly}
-                                                className="styled-input" />
+                                                className="styled-input"
+                                            />
                                         </div>
                                     </div>
                                 </section>
 
                                 <section className="params-card">
                                     <label className="section-label">Prompt</label>
-                                    <textarea className="prompt-textarea" placeholder="Enter system prompt here..."></textarea>
+                                    <textarea
+                                        className="prompt-textarea"
+                                        placeholder="Enter system prompt here..."
+                                        value={promptText}
+                                        onChange={(e) => setPromptText(e.target.value)}
+                                    ></textarea>
                                 </section>
                             </div>
 
                             <div className="params-side-column">
                                 <section className="params-card">
                                     <label className="section-label-small">Choose the model</label>
-                                    <select className="full-width-select"><option>Gemini 1.5 Pro</option></select>
+                                    <select
+                                        className="full-width-select"
+                                        value={selectedModel}
+                                        onChange={(e) => setSelectedModel(e.target.value)}
+                                    >
+                                        {availableModels.map((modelName) => (
+                                            <option key={modelName} value={modelName}>
+                                                {modelName}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </section>
 
                                 <section className="params-card">
@@ -587,8 +740,8 @@ function App() {
                                         <label className="label-name">Timeout (sec)</label>
                                         <input type="number"
                                                min="1"
-                                               step="1"
-                                               defaultValue="500"
+                                               value={networkTimeout}
+                                               onChange={(e) => setNetworkTimeout(e.target.value)}
                                                onKeyDown={handleIntegerOnly}
                                                className="styled-input"
                                         />
@@ -601,8 +754,8 @@ function App() {
                                         <label className="label-name">Timeout (sec)</label>
                                         <input type="number"
                                                min="1"
-                                               step="1"
-                                               defaultValue="120"
+                                               value={githubTimeout}
+                                               onChange={(e) => setGithubTimeout(e.target.value)}
                                                onKeyDown={handleIntegerOnly}
                                                className="styled-input"
                                         />
@@ -612,7 +765,11 @@ function App() {
                                 <section className="params-card">
                                     <label className="section-label">Review</label>
                                     <label className="label-name">Review mode</label>
-                                    <select className="full-width-select">
+                                    <select
+                                        className="full-width-select"
+                                        value={reviewMode}
+                                        onChange={(e) => setReviewMode(e.target.value)}
+                                    >
                                         <option>FULL_FILE_DIFF</option>
                                         <option>FULL_FILE_CURRENT</option>
                                         <option>FULL_FILE_PREVIOUS</option>
@@ -656,7 +813,10 @@ function App() {
                                     </div>
                                 </section>
                             </div>
-                            <button className="apply-btn">Apply changes</button>
+                            <button className="apply-btn"
+                                    onClick={handleApplyChanges}>
+                                Apply changes
+                            </button>
                         </div>
                     )}
                 </div>
