@@ -93,8 +93,8 @@ function App() {
         try {
             console.log("[INIT] Загрузка репозиториев и пул-реквестов...");
             const [pullsResponse, reposResponse] = await Promise.all([
-                fetch('http://localhost:8000/admin/pulls'),
-                fetch('http://localhost:8000/admin/repositories')
+                fetch('/admin/pulls'),
+                fetch('/admin/repositories')
             ]);
 
             if (pullsResponse.ok) {
@@ -118,7 +118,7 @@ function App() {
 
     const fetchPRDetails = async (owner, repo, pr_num) => {
         try {
-            const response = await fetch(`http://localhost:8000/admin/repos/${owner}/${repo}/pulls/${pr_num}`);
+            const response = await fetch(`/admin/repos/${owner}/${repo}/pulls/${pr_num}`);
             const data = await response.json();
             setDetails(data);
         } catch (error) {
@@ -156,8 +156,8 @@ function App() {
             const query = new URLSearchParams({ repo_id: repoId }).toString();
 
             const [modelResponse, promptResponse] = await Promise.all([
-                fetch(`http://localhost:8000/admin/config/model?${query}`),
-                fetch(`http://localhost:8000/admin/config/prompt?${query}`)
+                fetch(`/admin/config/model?${query}`),
+                fetch(`/admin/config/prompt?${query}`)
             ]);
 
             if (modelResponse.ok) {
@@ -209,12 +209,12 @@ function App() {
 
         try {
             const [modelResponse, promptResponse] = await Promise.all([
-                fetch(`http://localhost:8000/admin/config/model?${query}`, {
+                fetch(`/admin/config/model?${query}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(configPayload)
                 }),
-                fetch(`http://localhost:8000/admin/config/prompt?${query}`, {
+                fetch(`/admin/config/prompt?${query}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(promptPayload)
@@ -236,7 +236,7 @@ function App() {
         setTimeout(() => {
             fetchRepositories();
         }, 0);
-    }, []);
+    }, );
 
     useEffect(() => {
         if (paramRepository !== undefined && paramRepository !== null && !isNaN(paramRepository)) {
@@ -321,7 +321,7 @@ function App() {
                     days: daysValue
                 }).toString();
 
-                const response = await fetch(`http://localhost:8000/admin/stats?${query}`);
+                const response = await fetch(`/admin/stats?${query}`);
                 const data = await response.json();
                 setStats(data);
             } catch (error) {
@@ -331,7 +331,7 @@ function App() {
 
         const fetchGlobalLikesInside = async () => {
             try {
-                const response = await fetch('http://localhost:8000/admin/repos/likes');
+                const response = await fetch('/admin/repos/likes');
                 const data = await response.json();
                 setGlobalLikes(data);
             } catch (error) {
