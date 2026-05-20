@@ -192,8 +192,14 @@ class ReviewService:
         review.is_liked = liked
         self.db.commit()
         return review
-    
 
     def get_all_repositories(self):
         return self.db.query(Repository).order_by(Repository.id.asc()).all()
-    
+
+    def get_repository_id(self, owner: str, repo_name: str) -> Optional[int]:
+        """
+        Получить ID репозитория по owner и name
+        """
+        repo = self.db.query(Repository).filter_by(owner=owner, name=repo_name).first()
+        return repo.id if repo else None
+

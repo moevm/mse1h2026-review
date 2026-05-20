@@ -8,10 +8,17 @@ import time
 
 import requests
 import structlog
+
 from process_artifacts import process_folder
+from get_settings import (
+    fetch_repo_config,
+    fetch_repo_prompt,
+    apply_config_update,
+    write_prompt_md,
+)
 
 BACKEND_URL = "http://backend:8000"
-config_src_path = "/app/config/.ai-review.yaml"
+BASE_CONFIG_PATH = "/app/config/.ai-review.yaml"
 
 logger = structlog.get_logger()
 
@@ -79,7 +86,7 @@ def run_ai_review_for_pr(
     repo_name: str,
     repo_owner: str,
     pr_number: str,
-    branch: str
+    branch: str,
 ):
     log = logger.bind(repo=f"{repo_owner}/{repo_name}", pr=pr_number, branch=branch)
     temp_dir = tempfile.mkdtemp(prefix=f"ai-review-{repo_name}")
@@ -100,35 +107,38 @@ def run_ai_review_for_pr(
             ["git", "clone", "--branch", branch, auth_repo_url, temp_dir], check=True, capture_output=True, text=True
         )
 
-        config_dst_path = os.path.join(temp_dir, ".ai-review.yaml")
+        config_path = os.path.join(temp_dir, ".ai-review.yaml")
+        shutil.copy(BASE_CONFIG_PATH, config_path)
 
-        if not os.path.exists(config_src_path):
-            raise FileNotFoundError(f"Config not found at {config_src_path}")
-        shutil.copy(config_src_path, config_dst_path)
+        log.info("fetching_repo_settings")
 
-        with open(config_dst_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        model_name = config["llm"]["meta"]["model"]
+        config_data = fetch_repo_config(repo_owner, repo_name)
+        prompt_data = fetch_repo_prompt(repo_owner, repo_name)
+
+        apply_config_update(
+            yaml_path=config_path,
+            model_config=config_data,
+            prompt_config=prompt_data,
+            repo_owner=repo_owner,
+            repo_name=repo_name,
+            pr_number=pr_number,
+            api_token=github_token
+        )
+
+        prompt_path = os.path.join(temp_dir, "prompt.md")
+        write_prompt_md(prompt_data, prompt_path)
+
+        model_name = config_data["model"]
         ensure_ollama_model(model_name)
 
-        config["vcs"]["pipeline"]["owner"] = repo_owner
-        config["vcs"]["pipeline"]["repo"] = repo_name
-        config["vcs"]["pipeline"]["pull_number"] = str(pr_number)
-        config["vcs"]["http_client"]["api_token"] = github_token
-
-        with open(config_dst_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(config, f, sort_keys=False, allow_unicode=True)
-
-        log.info("running_ai_review_tool")
+        log.info("running_ai_review")
 
         start_time = time.time()
         subprocess.run(["ai-review", "clear-inline"], cwd=temp_dir, check=True)
         subprocess.run(["ai-review", "show-config"], cwd=temp_dir, check=True)
         subprocess.run(["ai-review", "run-inline"], cwd=temp_dir, check=True)
 
-        end_time = time.time()
-        duration_ms = int((end_time - start_time) * 1000)
-
+        duration_ms = int((time.time() - start_time) * 1000)
         log.info("ai_review_finished")
         log.info("ai_review_duration_ms", duration_ms=duration_ms)
 
