@@ -2,11 +2,13 @@ FROM node:20-alpine3.23 AS builder
 
 WORKDIR /app
 
-COPY app/package.json app/package-lock.json* ./
+COPY frontend/app/package.json frontend/app/package-lock.json* ./
 
 RUN npm install
 
-COPY app/ ./
+COPY frontend/app/ ./
+
+COPY context/ ./context/
 
 RUN npm run build
 
@@ -18,6 +20,8 @@ WORKDIR /usr/share/nginx/html
 RUN rm -rf ./*
 
 COPY --from=builder app/dist /usr/share/nginx/html
+
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
