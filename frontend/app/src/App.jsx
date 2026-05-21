@@ -88,6 +88,41 @@ function App() {
         return `conic-gradient(${gradient})`;
     };
 
+    const fetchModelConfig = async (repoId) => {
+        try {
+            const query = new URLSearchParams({ repo_id: repoId }).toString();
+
+            const [modelResponse, promptResponse] = await Promise.all([
+                fetch(`/admin/config/model?${query}`),
+                fetch(`/admin/config/prompt?${query}`)
+            ]);
+
+            if (modelResponse.ok) {
+                const data = await modelResponse.json();
+                setSelectedModel(data.model || 'Gemini 1.5 Pro');
+                setMaxTokens(data.max_tokens || 5000);
+                setTemperature(data.temperature ?? 0.2);
+                setContextSize(data.num_ctx || 5000);
+                setNucleusSampling(data.top_p ?? 0.7);
+                setRepeatPenalty(data.repeat_penalty || 1.1);
+                setSeed(data.seed || 42);
+                setConcurrency(data.concurrency || 2);
+                setNetworkTimeout(data.llm_http_client_timeout || 500);
+                setGithubTimeout(data.vcs_http_client_timeout || 120);
+            }
+
+            if (promptResponse.ok) {
+                const promptData = await promptResponse.json();
+                setPromptText(promptData.prompt_text || '');
+                if (promptData.mode) {
+                    setReviewMode(promptData.mode);
+                }
+            }
+        } catch (error) {
+            console.error("[GET] Ошибка при получении конфигурации или промпта:", error);
+        }
+    };
+
     const fetchRepositories = useCallback(async () => {
         try {
             console.log("[INIT] Загрузка репозиториев и пул-реквестов...");
@@ -148,41 +183,6 @@ function App() {
         "Liked": "#55efc4",
         "Disliked": "#ff7675",
         "No information": "#dfe6e9"
-    };
-
-    const fetchModelConfig = async (repoId) => {
-        try {
-            const query = new URLSearchParams({ repo_id: repoId }).toString();
-
-            const [modelResponse, promptResponse] = await Promise.all([
-                fetch(`/admin/config/model?${query}`),
-                fetch(`/admin/config/prompt?${query}`)
-            ]);
-
-            if (modelResponse.ok) {
-                const data = await modelResponse.json();
-                setSelectedModel(data.model || 'Gemini 1.5 Pro');
-                setMaxTokens(data.max_tokens || 5000);
-                setTemperature(data.temperature ?? 0.2);
-                setContextSize(data.num_ctx || 5000);
-                setNucleusSampling(data.top_p ?? 0.7);
-                setRepeatPenalty(data.repeat_penalty || 1.1);
-                setSeed(data.seed || 42);
-                setConcurrency(data.concurrency || 2);
-                setNetworkTimeout(data.llm_http_client_timeout || 500);
-                setGithubTimeout(data.vcs_http_client_timeout || 120);
-            }
-
-            if (promptResponse.ok) {
-                const promptData = await promptResponse.json();
-                setPromptText(promptData.prompt_text || '');
-                if (promptData.mode) {
-                    setReviewMode(promptData.mode);
-                }
-            }
-        } catch (error) {
-            console.error("[GET] Ошибка при получении конфигурации или промпта:", error);
-        }
     };
 
     const handleApplyChanges = async () => {
