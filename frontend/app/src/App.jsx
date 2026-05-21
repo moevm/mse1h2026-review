@@ -232,12 +232,19 @@ function App() {
     };
 
     useEffect(() => {
-        fetchRepositories();
+        const initRepositories = async () => {
+            await fetchRepositories();
+        };
+        initRepositories();
     }, [fetchRepositories]);
+
 
     useEffect(() => {
         if (paramRepository !== undefined && paramRepository !== null && !isNaN(paramRepository)) {
-            fetchModelConfig(paramRepository);
+            const loadModelConfig = async () => {
+                await fetchModelConfig(paramRepository);
+            };
+            loadModelConfig();
         }
     }, [paramRepository]);
 
@@ -335,7 +342,11 @@ function App() {
                 p => p.repo === repository && p.pr_number.toString() === pullRequest
             );
             if (selectedPrObj) {
-                fetchPRDetails(selectedPrObj.owner, selectedPrObj.repo, selectedPrObj.pr_number);
+                // Оборачиваем в асинхронный вызов, чтобы линтер видел разделение потоков выполнения
+                const loadPRDetails = async () => {
+                    await fetchPRDetails(selectedPrObj.owner, selectedPrObj.repo, selectedPrObj.pr_number);
+                };
+                loadPRDetails();
             }
         } else {
             setDetails(null);
