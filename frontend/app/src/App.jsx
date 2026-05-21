@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback }from 'react';
 import './App.css';
 import logoImg from './logo.png';
 import modelsList from "../context/models_list?raw";
@@ -18,7 +18,6 @@ function App() {
     const [nucleusSampling, setNucleusSampling] = useState(0.7);
 
     const [pullRequest, setPullRequest] = useState('All PRs');
-    const [pullRequests, setPullRequests] = useState(['All PRs']);
     const [globalLikes, setGlobalLikes] = useState({
         liked: 0,
         disliked: 0,
@@ -89,7 +88,7 @@ function App() {
         return `conic-gradient(${gradient})`;
     };
 
-    const fetchRepositories = async () => {
+    const fetchRepositories = useCallback(async () => {
         try {
             console.log("[INIT] Загрузка репозиториев и пул-реквестов...");
             const [pullsResponse, reposResponse] = await Promise.all([
@@ -114,7 +113,7 @@ function App() {
         } catch (error) {
             console.error("Ошибка инициализации списков репозиториев:", error);
         }
-    };
+    },[]);
 
     const fetchPRDetails = async (owner, repo, pr_num) => {
         try {
@@ -233,10 +232,8 @@ function App() {
     };
 
     useEffect(() => {
-        setTimeout(() => {
-            fetchRepositories();
-        }, 0);
-    }, );
+        fetchRepositories();
+    }, [fetchRepositories]);
 
     useEffect(() => {
         if (paramRepository !== undefined && paramRepository !== null && !isNaN(paramRepository)) {
@@ -244,22 +241,14 @@ function App() {
         }
     }, [paramRepository]);
 
-    useEffect(() => {
+    const pullRequestsList = useMemo(() => {
         if (repository === 'All repositories') {
-            setTimeout(() => {
-                setPullRequests(['All PRs']);
-                setPullRequest('All PRs');
-            }, 0);
-        } else {
-            const filteredPrs = allPrs
-                .filter(item => item.repo === repository)
-                .map(item => item.pr_number.toString());
-
-            setTimeout(() => {
-                setPullRequests(['All PRs', ...filteredPrs]);
-                setPullRequest('All PRs');
-            }, 0);
+            return ['All PRs'];
         }
+        const filtered = allPrs
+            .filter(item => item.repo === repository)
+            .map(item => item.pr_number.toString());
+        return ['All PRs', ...filtered];
     }, [repository, allPrs]);
 
 
@@ -339,21 +328,19 @@ function App() {
             }
         };
 
+        if (allPrs.length === 0) return;
+
         if (repository !== 'All repositories' && pullRequest !== 'All PRs') {
             const selectedPrObj = allPrs.find(
                 p => p.repo === repository && p.pr_number.toString() === pullRequest
             );
             if (selectedPrObj) {
-                setTimeout(() => {
-                    fetchPRDetails(selectedPrObj.owner, selectedPrObj.repo, selectedPrObj.pr_number);
-                }, 0);
+                fetchPRDetails(selectedPrObj.owner, selectedPrObj.repo, selectedPrObj.pr_number);
             }
         } else {
-            setTimeout(() => {
-                setDetails(null);
-                fetchStatsInside();
-                fetchGlobalLikesInside();
-            }, 0);
+            setDetails(null);
+            fetchStatsInside();
+            fetchGlobalLikesInside();
         }
     }, [repository, pullRequest, timeRange, allPrs]);
 
@@ -394,7 +381,10 @@ function App() {
                                     <label>REPOSITORY</label>
                                     <select
                                         value={repository}
-                                        onChange={(e) => setRepository(e.target.value)}
+                                        onChange={(e) => {
+                                            setRepository(e.target.value);
+                                            setPullRequest('All PRs');
+                                        }}
                                     >
                                         {repositories.map(repo => (
                                             <option key={repo.id} value={repo.name}>
@@ -416,7 +406,7 @@ function App() {
                                         {repository === 'All repositories' ? (
                                             <option>Not available</option>
                                         ) : (
-                                            pullRequests.map(pr => (
+                                            pullRequestsList.map(pr => (
                                                 <option key={pr} value={pr}>
                                                     {pr === 'All PRs' ? 'All PRs' : `#${pr}`}
                                                 </option>
