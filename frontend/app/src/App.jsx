@@ -342,16 +342,18 @@ function App() {
                 p => p.repo === repository && p.pr_number.toString() === pullRequest
             );
             if (selectedPrObj) {
-                // Оборачиваем в асинхронный вызов, чтобы линтер видел разделение потоков выполнения
                 const loadPRDetails = async () => {
                     await fetchPRDetails(selectedPrObj.owner, selectedPrObj.repo, selectedPrObj.pr_number);
                 };
                 loadPRDetails();
             }
         } else {
-            setDetails(null);
-            fetchStatsInside();
-            fetchGlobalLikesInside();
+            const clearDetailsAndLoadStats = async () => {
+                setDetails(null);
+                await fetchStatsInside();
+                await fetchGlobalLikesInside();
+            };
+            clearDetailsAndLoadStats();
         }
     }, [repository, pullRequest, timeRange, allPrs]);
 
