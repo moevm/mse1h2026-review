@@ -49,11 +49,10 @@ def ensure_ollama_model(model: str):
                     last_status = msg
                     chunk = json.loads(msg)
                     status = chunk.get("status")
-                    log.info("pull_progress", status=status)
                 except Exception:
                     continue
 
-                if time.time() - last_print >= 5:
+                if time.time() - last_print >= 10:
                     if last_status:
                         log.info("pull_progress_status", status=last_status)
                     last_print = time.time()

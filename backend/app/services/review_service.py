@@ -201,5 +201,9 @@ class ReviewService:
         Получить ID репозитория по owner и name
         """
         repo = self.db.query(Repository).filter_by(owner=owner, name=repo_name).first()
+        if not repo:
+            repo = Repository(owner=owner, name=repo_name)
+            self.db.add(repo)
+            self.db.flush()
         return repo.id if repo else None
 
