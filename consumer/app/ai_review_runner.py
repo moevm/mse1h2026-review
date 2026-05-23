@@ -149,7 +149,12 @@ def run_ai_review_for_pr(
         )
 
     except Exception as e:
-        log.error("ai_review_failed", error=str(e))
+        error_message = str(e)
+        github_token = os.getenv("GITHUB_TOKEN")
+        if github_token and github_token in error_message:
+            error_message = error_message.replace(github_token, "******")
+            e.args = (error_message,)
+        log.error("ai_review_failed", error=error_message)
 
     finally:
         shutil.rmtree(temp_dir)
