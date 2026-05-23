@@ -1,0 +1,57 @@
+services:
+  victoria-metrics:
+    image: victoriametrics/victoria-metrics:v1.143.0
+    container_name: victoria-metrics
+    ports:
+      - "8428:8428"
+    volumes:
+      - victoria-metrics-data:/victoria-metrics-data
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--selfScrapeInterval=5s"
+      - "-storageDataPath=/victoria-metrics-data"
+      - "-promscrape.config=/etc/prometheus/prometheus.yml"
+    networks:
+      - monitoring_net
+      - mq_net
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - monitoring_net
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8070:8080"
+    networks:
+      - monitoring_net
+    restart: unless-stopped
+
+networks:
+  monitoring_net:
+  mq_net:
+    name: mse1h2026-review_mq_net
+    external: true
+
+volumes:
+  grafana_data:
+  victoria-metrics-data:
