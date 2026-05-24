@@ -1,49 +1,46 @@
-import os
 import pytest
-import httpx
-import psycopg2
-import pika
+from unittest.mock import MagicMock
+from app.services.config_service import ConfigService
+from app.services.review_service import ReviewService
+from app.models.domain import Repository
 
-DB_URL = os.getenv("DATABASE_URL", "postgresql://user:password@db:5432/app_db")
+def test_config_service_upsert_logic(db_session):
+    repo = Repository(owner="test_owner", name="config_repo")
+    db_session.add(repo)
+    db_session.flush()
 
-RABBIT_USER = os.getenv("RABBIT_USER", "rabbit_user")
-RABBIT_PASS = os.getenv("RABBIT_PASS", "secure_password_mq")
-RABBIT_HOST = os.getenv("RABBIT_HOST", "rabbitmq")
+    service = ConfigService(db_session)
+    
+    class MockData:
+        model = "qwen2.5-coder:1.5b"
+        max_tokens = 2000
+        temperature = 0.5
+        num_ctx = 2000
+        top_p = 0.9
+        repeat_penalty = 1.0
+        seed = 42
+        llm_http_client_timeout = 60.0
+        vcs_http_client_timeout = 60.0
+        concurrency = 2
 
-API_URL = os.getenv("API_URL", "http://backend:8000")
+    config = service.update_model_config(repo_id=repo.id, data=MockData())
+    assert config.id is not None
+    assert config.repository_id == repo.id
+    assert config.model == "qwen2.5-coder:1.5b"
 
-@pytest.mark.asyncio
-async def test_api_health():
-    try:
-        async with httpx.AsyncClient(base_url=API_URL, timeout=10.0) as ac:
-            response = await ac.get("/")
-        assert response.status_code == 200
-        assert response.json() == {"status": "ok"}
-    except Exception as e:
-        pytest.fail(f"Бэкенд недоступен по адресу {API_URL}: {e}")
+    MockData.model = "deepseek-coder"
+    updated_config = service.update_model_config(repo_id=repo.id, data=MockData())
+    assert updated_config.id == config.id
+    assert updated_config.model == "deepseek-coder"
 
-def test_db_connection():
-    try:
-        conn = psycopg2.connect(DB_URL)
-        cur = conn.cursor()
-        cur.execute('SELECT 1')
-        assert cur.fetchone()[0] == 1
-        cur.close()
-        conn.close()
-    except Exception as e:
-        pytest.fail(f"Ошибка подключения к базе: {e}")
 
-def test_rabbit_connection():
-    try:
-        credentials = pika.PlainCredentials(RABBIT_USER, RABBIT_PASS)
-        parameters = pika.ConnectionParameters(
-            host=RABBIT_HOST, 
-            credentials=credentials,
-            connection_attempts=3,
-            retry_delay=5
-        )
-        connection = pika.BlockingConnection(parameters)
-        assert connection.is_open
-        connection.close()
-    except Exception as e:
-        pytest.fail(f"RabbitMQ недоступен по адресу {RABBIT_HOST}: {e}")
+def test_review_service_repository_fetching(db_session):
+    ReviewService.send_to_broker = MagicMock()
+    service = ReviewService(db_session)
+
+    repo = Repository(owner="test_owner", name="test_repo")
+    db_session.add(repo)
+    db_session.commit()
+
+    repo_id = service.get_repository_id(owner="test_owner", repo_name="test_repo")
+    assert repo_id == repo.id
