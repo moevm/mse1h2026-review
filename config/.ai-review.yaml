@@ -52,10 +52,10 @@ prompt:
     - /app/config/system_prompt.md
 
   include_inline_system_prompts: false
-  include_context_system_prompts: true
-  include_summary_system_prompts: true
-  include_inline_reply_system_prompts: true
-  include_summary_reply_system_prompts: true
+  include_context_system_prompts: false
+  include_summary_system_prompts: false
+  include_inline_reply_system_prompts: false
+  include_summary_reply_system_prompts: false
 
   inline_prompt_files:
     - /app/config/prompt.md

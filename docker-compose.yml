@@ -5,7 +5,10 @@ services:
       context: .
       dockerfile: ./frontend/Dockerfile
     ports:
-      - "127.0.0.1:8080:80"
+      - "127.0.0.1:${FRONTEND_PORT}:80"
+    environment:
+      - FRONTEND_PORT=${FRONTEND_PORT}
+      - BACKEND_SERVICE=backend
     networks:
       - frontend_net
     depends_on:
@@ -24,7 +27,7 @@ services:
       - RABBITMQ_DEFAULT_USER=${RABBIT_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBIT_PASS}
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${BACKEND_PORT}:8000"
     networks:
       - backend_net
       - frontend_net
