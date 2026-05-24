@@ -23,7 +23,7 @@ function App() {
         disliked: 0,
         without_mark: 0
     });
-    const [paramRepository, setParamRepository] = useState(0);
+    const [paramRepository, setParamRepository] = useState(1);
     const [selectedModel, setSelectedModel] = useState('Gemini 1.5 Pro');
     const [maxTokens, setMaxTokens] = useState(5000);
     const [contextSize, setContextSize] = useState(5000);
