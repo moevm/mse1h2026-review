@@ -17,6 +17,14 @@
 - Temperature: 0.3
 - Nucleus sampling: 0.9
 
+Для запуска бенчмарка выполните команду:
+
+```bash
+docker compose -f docker-compose.monitoring.yml up -d
+```
+
+В графане (на http://localhost:3000) добавьте датасорс prometheus c адресом http://victoria-metrics:8428, в бенчмарке использовался [этот](https://grafana.com/grafana/dashboards/19724-y0nei-s-cadvisor-exporter/) дашборд.
+
 ## Запуск 1. Один запрос на qwen2.5-coder:1.5b
 
 Параметры:
