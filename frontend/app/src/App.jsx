@@ -553,11 +553,14 @@ function App() {
                                             setParamRepository(selectedId);
                                         }}
                                     >
-                                        {repositories.map(repo => (
-                                            <option key={repo.id} value={repo.id}>
-                                                {repo.id === 0 ? 'All repositories (Global Config)' : repo.name}
-                                            </option>
-                                        ))}
+                                        {repositories
+                                            .filter(repo => repo.id !== 0)
+                                            .map(repo => (
+                                                <option key={repo.id} value={repo.id}>
+                                                    {repo.name}
+                                                </option>
+                                            ))
+                                        }
                                     </select>
                                 </section>
 
