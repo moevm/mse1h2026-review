@@ -71,6 +71,13 @@ services:
     container_name: ollama
     volumes:
       - ollama_data:/root/.ollama
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
     networks:
       - ai_net
     healthcheck:
@@ -99,22 +106,24 @@ services:
       retries: 5
 
   consumer:
-      container_name: consumer
-      build:
-        context: .
-        dockerfile: consumer/Dockerfile
-      environment:
-        - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
-        - GITHUB_TOKEN=${GITHUB_TOKEN}
-        - QUEUE_NAME=webhook_queue
-      networks:
-        - mq_net
-        - ai_net
-      depends_on:
-        rabbitmq:
-          condition: service_healthy
-        ollama:
-          condition: service_healthy
+    # deploy:
+    #   replicas: 3
+    container_name: consumer
+    build:
+      context: .
+      dockerfile: consumer/Dockerfile
+    environment:
+      - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - QUEUE_NAME=webhook_queue
+    networks:
+      - mq_net
+      - ai_net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
 
   backend-tests:
     build:
