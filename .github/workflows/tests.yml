@@ -1,10 +1,8 @@
-name: Integration Tests
+name: Integration and Functional Tests
 
 on:
-  push:
-    branches: [ main, master, feat/* ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, feat/* ]
 
 jobs:
   run-tests:
@@ -22,6 +20,12 @@ jobs:
           echo "RABBIT_USER=${{ secrets.RABBIT_USER || 'rabbit_user' }}" >> .env
           echo "RABBIT_PASS=${{ secrets.RABBIT_PASS || 'secure_password_mq' }}" >> .env
 
-      - name: Run Integration Tests
+      - name: Run Tests
+        env:
+          DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER || 'user' }}:${{ secrets.POSTGRES_PASSWORD || 'password' }}@db:5432/${{ secrets.POSTGRES_DB || 'app_db' }}
         run: |
+          docker compose --profile tests up -d db rabbitmq
+          
+          sleep 5
+          
           docker compose --profile tests up --build --exit-code-from backend-tests backend-tests
