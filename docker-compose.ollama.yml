@@ -1,0 +1,29 @@
+services:
+  ollama:
+    image: ollama/ollama:0.17.7
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    networks:
+      - ai_net
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  consumer:
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+volumes:
+  ollama_data:

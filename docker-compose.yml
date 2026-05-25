@@ -39,8 +39,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8000/ || exit 1"]
       interval: 10s
@@ -64,27 +62,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    restart: unless-stopped
-
-  ollama:
-    image: ollama/ollama:0.17.7
-    container_name: ollama
-    volumes:
-      - ollama_data:/root/.ollama
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
-    networks:
-      - ai_net
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     restart: unless-stopped
 
   rabbitmq:
@@ -116,13 +93,12 @@ services:
       - RABBIT_URL=amqp://${RABBIT_USER}:${RABBIT_PASS}@rabbitmq:5672/
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - QUEUE_NAME=webhook_queue
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
     networks:
       - mq_net
       - ai_net
     depends_on:
       rabbitmq:
-        condition: service_healthy
-      ollama:
         condition: service_healthy
 
   backend-tests:
@@ -176,5 +152,4 @@ networks:
 
 volumes:
   postgres_data:
-  ollama_data:
   rabbitmq_data:

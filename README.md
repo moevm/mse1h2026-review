@@ -53,10 +53,22 @@ SMEE_URL=https://smee.io/ваш-адрес   - ваш адрес получен�
 ```
 ### 3. Запуск проекта
 ```bash
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d --build
 ```
 Для локальной разработки, отладки и проверки работоспособности будет удобнее запустить dev версию с автоматическим запуском перенаправления вебхуков через smee 
 
+```bash
+docker compose --profile dev -f docker-compose.yml -f docker-compose.ollama.yml up -d --build
+```
+
+Для запуска без контейнера ollama и использовании локально запущенной ollama следует настроить переменную окружения .env и параметр конфига http_client api_url config/.ai-review.yaml
+```bash
+OLLAMA_URL=http://host.docker.internal:11434
+```
+```bash
+api_url: http://host.docker.internal:11434
+```
+И запустить командой
 ```bash
 docker compose --profile dev up -d --build
 ```

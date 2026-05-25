@@ -24,7 +24,7 @@ logger = structlog.get_logger()
 
 
 def ensure_ollama_model(model: str):
-    base_url = "http://ollama:11434"
+    base_url = os.getenv("OLLAMA_URL", "http://ollama:11434")
     log = logger.bind(model=model)
 
     try:
