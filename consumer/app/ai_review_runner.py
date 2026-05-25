@@ -79,6 +79,24 @@ def send_review_to_backend(owner, repo, pr_number, stats, duration_ms):
     logger.info("review_sent_to_backend", owner=owner, repo=repo, pr_number=pr_number)
     return resp.json()
 
+def post_github_comment(owner: str, repo: str, pr_number: str, token: str, message: str):
+    """
+    Отправляет комментарий в PR через GitHub API.
+    """
+    url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+    }
+    payload = {"body": message}
+
+    try:
+        resp = requests.post(url, json=payload, headers=headers, timeout=30)
+        resp.raise_for_status()
+        logger.info("github_comment_posted", owner=owner, repo=repo, pr_number=pr_number)
+    except Exception as e:
+        logger.error("failed_to_post_github_comment", error=str(e))
+
 
 def run_ai_review_for_pr(
     repo_url: str,
@@ -144,17 +162,37 @@ def run_ai_review_for_pr(
         artifacts_path = os.path.join(temp_dir, "artifacts", "llm")
         stats = process_folder(artifacts_path)
         log.info("artifacts_processed")
+
+        if stats["valid_files"] == 0:
+            raise RuntimeError("No valid files found for review.")
+
         send_review_to_backend(
             owner=repo_owner, repo=repo_name, pr_number=pr_number, stats=stats, duration_ms=duration_ms
         )
 
     except Exception as e:
+
         error_message = str(e)
         github_token = os.getenv("GITHUB_TOKEN")
         if github_token and github_token in error_message:
             error_message = error_message.replace(github_token, "******")
             e.args = (error_message,)
         log.error("ai_review_failed", error=error_message)
+
+        if github_token:
+            comment_body = (
+                f"❌ AI Review Failed 😞\n\n"
+                f"An error occurred while running the AI review process:\n"
+                f"```\n{error_message}\n```\n\n"
+                f"Please check the worker logs for details."
+            )
+            post_github_comment(
+                owner=repo_owner,
+                repo=repo_name,
+                pr_number=pr_number,
+                token=github_token,
+                message=comment_body
+            )
 
     finally:
         shutil.rmtree(temp_dir)
