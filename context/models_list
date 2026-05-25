@@ -1,5 +1,6 @@
-Gemini 1.5 Pro
-Gemini 1.5 Flash
 qwen2.5-coder:1.5b
+qwen3.5:9b
 qwen2.5-coder:7b
 llama3.1:8b
+deepseek-coder-v2:16b
+gemma3:4b
